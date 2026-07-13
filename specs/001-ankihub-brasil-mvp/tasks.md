@@ -302,7 +302,7 @@
 - [X] T096 [P] Audit mobile-first 360px layout (sem rolagem horizontal) em todas as páginas de `frontend/src/`
 - [X] T097 [P] Add `Accept`-header API version negotiation middleware + teste de compatibilidade retroativa in `backend/config/middleware.py`
 - [X] T098 [P] Verify Sentry captures errors end-to-end in `backend/` and `addon/`
-- [ ] T099 Run quickstart.md validation scenarios 1–3 end-to-end
+- [X] T099 Run quickstart.md validation scenarios 1–3 end-to-end
 - [X] T100 [P] Security hardening pass: confirm `nh3` allowlist, rate limits, HTTPS-only settings in `backend/config/settings/`
 
 ---
