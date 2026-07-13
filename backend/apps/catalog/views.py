@@ -1,5 +1,3 @@
-import json
-
 from django.db.models import Case, F, IntegerField, Q, TextField, Value, When
 from django.db.models.functions import Cast
 from django.shortcuts import get_object_or_404
@@ -7,6 +5,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.base import json_escaped as _json_escaped
 from config.pagination import DefaultCursorPagination
 
 from .models import Deck, Subscription
@@ -16,11 +15,6 @@ from .serializers import (
     DeckSubscribedSerializer,
     SubscriptionSerializer,
 )
-
-
-def _json_escaped(text: str) -> str:
-    """JSONField persiste não-ASCII escapado (\\u00ea); escapar a agulha igual."""
-    return json.dumps(text, ensure_ascii=True)[1:-1]
 
 
 class CatalogPagination(DefaultCursorPagination):

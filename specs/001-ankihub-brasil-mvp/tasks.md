@@ -185,9 +185,9 @@
 
 **Independent Test**: Buscar termo presente em um campo e por ID exato num deck de teste; confirmar tempo de resposta e fidelidade do template/CSS.
 
-- [ ] T066 [P] [US6] Contract test `GET /decks/{id}/notes/` search in `backend/tests/contract/test_notes_search.py`
-- [ ] T067 [US6] Implement note search (texto+ID, <500ms) and detail endpoints in `backend/apps/notes/views.py`
-- [ ] T068 [P] [US6] Build note search UI and faithful template/CSS renderer in `frontend/src/app/decks/[id]/notes/page.tsx`
+- [X] T066 [P] [US6] Contract test `GET /decks/{id}/notes/` search in `backend/tests/contract/test_notes_search.py`
+- [X] T067 [US6] Implement note search (texto+ID, <500ms) and detail endpoints in `backend/apps/notes/views.py`
+- [X] T068 [P] [US6] Build note search UI and faithful template/CSS renderer in `frontend/src/app/decks/[id]/notes/page.tsx`
 
 **Checkpoint**: US6 funciona isoladamente
 
