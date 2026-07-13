@@ -23,3 +23,8 @@ def sign_up(email: str, password: str) -> str:
 
 def send_password_reset(email: str) -> None:
     _client().auth.reset_password_for_email(email)
+
+
+def delete_user(auth_id: str) -> None:
+    """Exclusão administrativa; service role fica somente no backend."""
+    _client().auth.admin.delete_user(str(auth_id))

@@ -12,6 +12,7 @@ import {
 import { Inbox, MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { api, ApiError, type Paginated } from "@/lib/api-client";
 import SuggestionModerationControls from "@/components/SuggestionModerationControls";
+import ReportButton from "@/components/ReportButton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,10 +34,12 @@ interface Suggestion {
   id: string;
   type: "change" | "new_note" | "deletion";
   status: "pending" | "accepted" | "rejected";
-  author: string;
+  author: string | null;
   change_category: string | null;
   justification: string;
   proposed_field_values: Record<string, string> | null;
+  tags: string[];
+  empty_fields: string[];
   note_ids: string[];
   likes_count: number;
   dislikes_count: number;
@@ -46,7 +49,7 @@ interface Suggestion {
 
 interface Comment {
   id: string;
-  author: string;
+  author: string | null;
   body: string;
   created_at: string;
 }
@@ -130,10 +133,14 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
       {data?.results.map((comment) => (
         <div key={comment.id} className="text-sm">
           <p className="text-muted-foreground">
-            <span className="font-mono">{comment.author.slice(0, 8)}</span> ·{" "}
+            <span className="font-mono">
+              {comment.author?.slice(0, 8) ?? "removido"}
+            </span>{" "}
+            ·{" "}
             {formatDate(comment.created_at)}
           </p>
           <p>{comment.body}</p>
+          <ReportButton commentId={comment.id} suggestionThread />
         </div>
       ))}
       <form
@@ -201,7 +208,10 @@ function SuggestionCard({
             </Badge>
           )}
           <span className="text-sm text-muted-foreground">
-            <span className="font-mono">{suggestion.author.slice(0, 8)}</span> ·{" "}
+            <span className="font-mono">
+              {suggestion.author?.slice(0, 8) ?? "removido"}
+            </span>{" "}
+            ·{" "}
             {formatDate(suggestion.created_at)}
           </span>
         </div>
@@ -216,7 +226,14 @@ function SuggestionCard({
             <div className="mt-2 flex flex-col gap-2">
               {proposedFields.map(([field, html]) => (
                 <div key={field}>
-                  <p className="text-sm font-medium text-muted-foreground">{field}</p>
+                  <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    {field}
+                    {suggestion.empty_fields.includes(field) && (
+                      <Badge variant="outline" className="rounded-full">
+                        Vazio
+                      </Badge>
+                    )}
+                  </p>
                   <div
                     className="rounded-lg bg-success/10 p-2"
                     // HTML já sanitizado pelo backend (nh3)
@@ -226,6 +243,12 @@ function SuggestionCard({
               ))}
             </div>
           </details>
+        )}
+
+        {suggestion.tags.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Tags propostas: {suggestion.tags.join(", ")}
+          </p>
         )}
 
         {suggestion.status === "rejected" && suggestion.rejection_reason && (

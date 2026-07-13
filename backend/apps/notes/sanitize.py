@@ -36,6 +36,7 @@ _ALLOWED_ATTRIBUTES = {
 }
 
 _ALLOWED_URL_SCHEMES = {"http", "https"}
+_ALLOWED_STYLE_PROPERTIES = {"font-size", "text-align"}
 
 
 def sanitize_html(html: str) -> str:
@@ -44,6 +45,7 @@ def sanitize_html(html: str) -> str:
         tags=_ALLOWED_TAGS,
         attributes=_ALLOWED_ATTRIBUTES,
         url_schemes=_ALLOWED_URL_SCHEMES,
+        filter_style_properties=_ALLOWED_STYLE_PROPERTIES,
         link_rel="noopener noreferrer",
     )
 

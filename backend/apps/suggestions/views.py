@@ -1,14 +1,17 @@
 """Endpoints de sugestões e da tela Community Suggestions (contracts/suggestions.md)."""
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.catalog.models import Subscription
+from apps.catalog.models import Deck, Subscription
 from apps.discussions.models import Comment
 from apps.discussions.serializers import CommentSerializer
 from apps.notes.models import Note
@@ -18,8 +21,35 @@ from .models import Suggestion, SuggestionTargetNote, SuggestionVote
 from .serializers import (
     BulkChangeSuggestionSerializer,
     ChangeSuggestionSerializer,
+    DeletionSuggestionSerializer,
+    NewNoteSuggestionSerializer,
     SuggestionDetailSerializer,
     SuggestionVoteSerializer,
+)
+
+
+def _suggestion_rate(_group, _request):
+    return settings.RATELIMIT_SUGGESTION_RATE
+
+
+def _rate_limit_response(request):
+    if getattr(request, "limited", False):
+        return Response(
+            {"detail": "Limite de sugestões atingido. Tente novamente em um minuto."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": "60"},
+        )
+    return None
+
+
+suggestion_ratelimit = method_decorator(
+    ratelimit(
+        group="suggestion-submission",
+        key="user",
+        rate=_suggestion_rate,
+        method="POST",
+        block=False,
+    )
 )
 
 
@@ -57,7 +87,10 @@ def _create_change_suggestion(request, deck, notes, validated) -> Response:
 class ChangeSuggestionCreateView(APIView):
     """POST /notes/{id}/suggestions/change/ — sugestão sobre uma única nota."""
 
+    @suggestion_ratelimit
     def post(self, request, note_id):
+        if limited := _rate_limit_response(request):
+            return limited
         note = get_object_or_404(Note, pk=note_id, deleted_at__isnull=True)
         if not _subscriber_or_none(request.user, note.deck):
             return Response(
@@ -74,7 +107,10 @@ class ChangeSuggestionCreateView(APIView):
 class BulkChangeSuggestionCreateView(APIView):
     """POST /suggestions/bulk-change/ — uma única Suggestion cobrindo várias notas (FR-017)."""
 
+    @suggestion_ratelimit
     def post(self, request):
+        if limited := _rate_limit_response(request):
+            return limited
         serializer = BulkChangeSuggestionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         note_ids = serializer.validated_data["note_ids"]
@@ -106,6 +142,64 @@ class BulkChangeSuggestionCreateView(APIView):
         )
 
 
+class NewNoteSuggestionCreateView(APIView):
+    """POST /decks/{id}/suggestions/new-note/ — propõe nota completa (FR-018)."""
+
+    @suggestion_ratelimit
+    def post(self, request, deck_id):
+        if limited := _rate_limit_response(request):
+            return limited
+        deck = get_object_or_404(
+            Deck.objects.select_related("note_type"), pk=deck_id
+        )
+        if not _subscriber_or_none(request.user, deck):
+            raise PermissionDenied("Assine o deck para sugerir uma nota nova.")
+        serializer = NewNoteSuggestionSerializer(
+            data=request.data, context={"deck": deck}
+        )
+        serializer.is_valid(raise_exception=True)
+        suggestion = Suggestion.objects.create(
+            type=Suggestion.Type.NEW_NOTE,
+            deck=deck,
+            author=request.user,
+            **serializer.validated_data,
+        )
+        return Response(
+            NewNoteSuggestionSerializer(suggestion, context={"deck": deck}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class DeletionSuggestionCreateView(APIView):
+    """POST /notes/{id}/suggestions/deletion/ — propõe remoção (FR-019)."""
+
+    @suggestion_ratelimit
+    def post(self, request, note_id):
+        if limited := _rate_limit_response(request):
+            return limited
+        note = get_object_or_404(
+            Note.objects.select_related("deck"),
+            pk=note_id,
+            deleted_at__isnull=True,
+        )
+        if not _subscriber_or_none(request.user, note.deck):
+            raise PermissionDenied("Assine o deck para sugerir a exclusão.")
+        serializer = DeletionSuggestionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            suggestion = Suggestion.objects.create(
+                type=Suggestion.Type.DELETION,
+                deck=note.deck,
+                author=request.user,
+                **serializer.validated_data,
+            )
+            SuggestionTargetNote.objects.create(suggestion=suggestion, note=note)
+        return Response(
+            DeletionSuggestionSerializer(suggestion).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class DeckSuggestionListView(generics.ListAPIView):
     """GET /decks/{id}/suggestions/ — lista com filtros da tela (FR-021, FR-022)."""
 
@@ -113,8 +207,6 @@ class DeckSuggestionListView(generics.ListAPIView):
     pagination_class = DefaultCursorPagination
 
     def get_queryset(self):
-        from apps.catalog.models import Deck
-
         deck = get_object_or_404(Deck, pk=self.kwargs["deck_id"])
         if not _subscriber_or_none(self.request.user, deck):
             raise PermissionDenied("Assine o deck para acessar as sugestões.")

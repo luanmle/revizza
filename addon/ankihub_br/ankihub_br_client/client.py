@@ -85,6 +85,9 @@ class AnkiHubBrClient:
     def get_deck_full(self, deck_id: str) -> dict:
         return self.get(f"/decks/{deck_id}/sync/full/").json()
 
+    def get_deck_protection(self, deck_id: str) -> dict:
+        return self.get(f"/decks/{deck_id}/protection/me/").json()
+
     def get_media_url(self, content_hash: str) -> str:
         return self.get(f"/media/{content_hash}/").json()["url"]
 
@@ -93,3 +96,15 @@ class AnkiHubBrClient:
         response = requests.get(url, timeout=DEFAULT_TIMEOUT)
         response.raise_for_status()
         return response.content
+
+    def publish_deck(self, deck_id: str, payload: dict) -> dict:
+        return self.post(f"/decks/{deck_id}/publish/", json=payload).json()
+
+    def upload_signed_media(self, url: str, filename: str, content: bytes) -> None:
+        # Supabase signed upload: multipart PUT; não vaza o Bearer da API.
+        response = requests.put(
+            url,
+            files={"file": (filename, content, "application/octet-stream")},
+            timeout=DEFAULT_TIMEOUT,
+        )
+        response.raise_for_status()

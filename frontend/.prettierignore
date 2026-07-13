@@ -4,6 +4,10 @@ dist/
 build/
 coverage/
 out/
+test-results/
+playwright-report/
+.impeccable/
+*.tsbuildinfo
 package-lock.json
 yarn.lock
 pnpm-lock.yaml

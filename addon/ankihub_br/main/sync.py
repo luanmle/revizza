@@ -8,6 +8,7 @@ subdecks (FR-034). O formato do payload é o de `_deck_payload` no backend
 import time
 
 from ..db import models as state
+from ..protection import merge_tags, protected_field_names
 from . import backup as backup_mod
 from . import media as media_mod
 
@@ -113,9 +114,19 @@ def _apply_note_types(col, note_types: list[dict], *, allow_structural: bool) ->
     return mapping
 
 
-def _fill_fields(note, field_names: list[str], field_values: dict) -> None:
+def _fill_fields(
+    note,
+    field_names: list[str],
+    field_values: dict,
+    protected_fields: set[str] | None = None,
+) -> None:
+    protected_fields = protected_fields or set()
     for index, field_name in enumerate(field_names):
-        if field_name in field_values and index < len(note.fields):
+        if (
+            field_name in field_values
+            and field_name not in protected_fields
+            and index < len(note.fields)
+        ):
             note.fields[index] = field_values[field_name]
 
 
@@ -136,6 +147,8 @@ def _apply_notes(
     models_by_remote_id: dict,
     *,
     delete_notes_on_removal: bool,
+    protected_fields: set[str],
+    protected_tags: set[str],
 ) -> None:
     """Fase 2 (FR-034). Cria/atualiza/remove notas pelo guid."""
     root_deck_id = col.decks.id(deck_name)
@@ -151,8 +164,9 @@ def _apply_notes(
         field_names = [f["name"] for f in model["flds"]]
         if note_id:
             note = col.get_note(note_id)
-            _fill_fields(note, field_names, item["field_values"])
-            note.tags = list(item["tags"])
+            fields_to_keep = protected_field_names(note.tags, protected_fields)
+            _fill_fields(note, field_names, item["field_values"], fields_to_keep)
+            note.tags = merge_tags(item["tags"], note.tags, protected_tags)
             col.update_note(note)
         else:
             note = col.new_note(model)
@@ -175,7 +189,14 @@ def _apply_subdeck_moves(col, deck_name: str, note_items: list[dict]) -> None:
         col.set_deck(col.card_ids_of_note(note_id), deck_id)
 
 
-def apply_delta(col, payload: dict, *, delete_notes_on_removal: bool = False) -> None:
+def apply_delta(
+    col,
+    payload: dict,
+    *,
+    delete_notes_on_removal: bool = False,
+    protected_fields: set[str] | None = None,
+    protected_tags: set[str] | None = None,
+) -> None:
     models_map = _apply_note_types(col, payload["note_types"], allow_structural=False)
     _apply_notes(
         col,
@@ -183,11 +204,20 @@ def apply_delta(col, payload: dict, *, delete_notes_on_removal: bool = False) ->
         payload["notes"],
         models_map,
         delete_notes_on_removal=delete_notes_on_removal,
+        protected_fields=protected_fields or set(),
+        protected_tags=protected_tags or set(),
     )
     _apply_subdeck_moves(col, payload["deck_name"], payload["notes"])
 
 
-def apply_full(col, payload: dict, *, delete_notes_on_removal: bool = False) -> None:
+def apply_full(
+    col,
+    payload: dict,
+    *,
+    delete_notes_on_removal: bool = False,
+    protected_fields: set[str] | None = None,
+    protected_tags: set[str] | None = None,
+) -> None:
     """Ressincronização completa (FR-035): upsert de tudo + remoção do que saiu."""
     models_map = _apply_note_types(col, payload["note_types"], allow_structural=True)
     _apply_notes(
@@ -196,6 +226,8 @@ def apply_full(col, payload: dict, *, delete_notes_on_removal: bool = False) -> 
         payload["notes"],
         models_map,
         delete_notes_on_removal=delete_notes_on_removal,
+        protected_fields=protected_fields or set(),
+        protected_tags=protected_tags or set(),
     )
     _apply_subdeck_moves(col, payload["deck_name"], payload["notes"])
 
@@ -213,16 +245,38 @@ def perform_sync(
 ) -> dict:
     """Aplica delta (ou full) e mídia de um deck dentro do run atual."""
     since_mod = state.last_synced_mod(deck_id)
+    get_protection = getattr(client, "get_deck_protection", None)
+    protection = get_protection(deck_id) if get_protection else {}
+    protected_fields = set(protection.get("fields", []))
+    protected_tags = set(protection.get("tags", []))
     payload = client.get_deck_delta(deck_id, since_mod)
     if payload.get("full_resync_required"):
         payload = client.get_deck_full(deck_id)
-        apply_full(col, payload, delete_notes_on_removal=delete_notes_on_removal)
+        apply_full(
+            col,
+            payload,
+            delete_notes_on_removal=delete_notes_on_removal,
+            protected_fields=protected_fields,
+            protected_tags=protected_tags,
+        )
     else:
         try:
-            apply_delta(col, payload, delete_notes_on_removal=delete_notes_on_removal)
+            apply_delta(
+                col,
+                payload,
+                delete_notes_on_removal=delete_notes_on_removal,
+                protected_fields=protected_fields,
+                protected_tags=protected_tags,
+            )
         except FullResyncRequired:
             payload = client.get_deck_full(deck_id)
-            apply_full(col, payload, delete_notes_on_removal=delete_notes_on_removal)
+            apply_full(
+                col,
+                payload,
+                delete_notes_on_removal=delete_notes_on_removal,
+                protected_fields=protected_fields,
+                protected_tags=protected_tags,
+            )
     media_mod.sync_media(col, payload.get("media", []), client)
     return payload
 

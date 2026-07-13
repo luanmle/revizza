@@ -68,6 +68,9 @@ export default function AccountPage() {
         />
         Uso de dados anonimizados em pesquisa
       </label>
+      <p>
+        <Link href="/account/privacy">Privacidade, exportação e exclusão</Link>
+      </p>
     </main>
   );
 }

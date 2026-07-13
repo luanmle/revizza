@@ -32,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "config.middleware.ApiVersionCompatibilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -82,6 +83,9 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "AnkiHub Brasil <nao-responda@localhost>"
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -100,6 +104,10 @@ REST_FRAMEWORK = {
     "DEFAULT_VERSION": "1",
     "ALLOWED_VERSIONS": ["1"],
 }
+
+# A versão anterior é reescrita para o contrato atual pelo middleware. Remover o
+# alias somente depois que a janela de transição dos add-ons instalados terminar.
+API_VERSION_ALIASES = {"0": "1"}
 
 # --- django-ratelimit: rates compartilhados, usados via @ratelimit(rate=settings.X) nas views ---
 RATELIMIT_ENABLE = True

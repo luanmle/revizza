@@ -1,5 +1,10 @@
 {
   "api_base_url": "",
+  "supabase_url": "",
+  "supabase_anon_key": "",
   "token": "",
+  "refresh_token": "",
+  "token_expires_at": 0,
+  "published_decks": {},
   "sentry_dsn": ""
 }

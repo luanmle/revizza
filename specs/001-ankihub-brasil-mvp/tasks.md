@@ -199,9 +199,9 @@
 
 **Independent Test**: Comentar em uma nota, editar/excluir o próprio comentário, confirmar que não aparece na thread de nenhuma sugestão daquela nota.
 
-- [ ] T069 [P] [US7] Contract test note comments CRUD in `backend/tests/contract/test_note_comments.py`
-- [ ] T070 [US7] Implement note comment create/edit/delete-own endpoints in `backend/apps/discussions/views.py`
-- [ ] T071 [P] [US7] Build note comment thread UI in `frontend/src/components/CommentThread.tsx`
+- [X] T069 [P] [US7] Contract test note comments CRUD in `backend/tests/contract/test_note_comments.py`
+- [X] T070 [US7] Implement note comment create/edit/delete-own endpoints in `backend/apps/discussions/views.py`
+- [X] T071 [P] [US7] Build note comment thread UI in `frontend/src/components/CommentThread.tsx`
 
 **Checkpoint**: US7 funciona isoladamente
 
@@ -213,9 +213,9 @@
 
 **Independent Test**: Preencher formulário de nota nova deixando um campo vazio, enviar e confirmar que aparece na aba própria de Community Suggestions com o campo vazio sinalizado.
 
-- [ ] T072 [P] [US8] Contract test `POST /decks/{id}/suggestions/new-note/` in `backend/tests/contract/test_suggestions_new_note.py`
-- [ ] T073 [US8] Implement new-note suggestion endpoint with empty-field flagging in `backend/apps/suggestions/views.py`
-- [ ] T074 [P] [US8] Build new-note suggestion form (todos os campos do tipo de nota + rich text) in `frontend/src/app/decks/[id]/suggest-new-note/page.tsx`
+- [X] T072 [P] [US8] Contract test `POST /decks/{id}/suggestions/new-note/` in `backend/tests/contract/test_suggestions_new_note.py`
+- [X] T073 [US8] Implement new-note suggestion endpoint with empty-field flagging in `backend/apps/suggestions/views.py`
+- [X] T074 [P] [US8] Build new-note suggestion form (todos os campos do tipo de nota + rich text) in `frontend/src/app/decks/[id]/suggest-new-note/page.tsx`
 
 **Checkpoint**: US8 funciona isoladamente
 
@@ -227,9 +227,9 @@
 
 **Independent Test**: Sugerir exclusão com justificativa, aceitar como moderador, sincronizar e confirmar remoção/marcação conforme preferência do assinante.
 
-- [ ] T075 [P] [US9] Contract test `POST /notes/{id}/suggestions/deletion/` in `backend/tests/contract/test_suggestions_deletion.py`
-- [ ] T076 [US9] Implement deletion-suggestion endpoint and accept-path soft-delete propagation in `backend/apps/suggestions/views.py`, `decisions.py`
-- [ ] T077 [P] [US9] Build deletion-suggestion form and confirmation UI in `frontend/src/app/decks/[id]/notes/[noteId]/suggest-deletion/page.tsx`
+- [X] T075 [P] [US9] Contract test `POST /notes/{id}/suggestions/deletion/` in `backend/tests/contract/test_suggestions_deletion.py`
+- [X] T076 [US9] Implement deletion-suggestion endpoint and accept-path soft-delete propagation in `backend/apps/suggestions/views.py`, `decisions.py`
+- [X] T077 [P] [US9] Build deletion-suggestion form and confirmation UI in `frontend/src/app/decks/[id]/notes/[noteId]/suggest-deletion/page.tsx`
 
 **Checkpoint**: US9 funciona isoladamente
 
@@ -241,12 +241,12 @@
 
 **Independent Test**: Configurar campo protegido, adicionar tag `AnkiHubBR_Protect::Campo` a uma nota, sincronizar após uma mudança aceita e confirmar que o conteúdo protegido permanece intacto.
 
-- [ ] T078 [P] [US11] Contract test `GET`/`PUT /decks/{id}/protection/me/` in `backend/tests/contract/test_protection.py`
-- [ ] T079 [P] [US11] pytest-anki test: campo/tag protegido preservado ao aplicar delta in `addon/tests/unit/test_protection.py`
-- [ ] T080 [US11] Create ProtectedFieldConfig/ProtectedTagConfig models and endpoints in `backend/apps/protection/models.py`, `views.py`
-- [ ] T081 [US11] Implement add-on protection lookup before delta apply (config de deck + tag `AnkiHubBR_Protect::<Campo>`) in `addon/ankihub_br/protection/`
-- [ ] T082 [US11] Implement guard against touching other add-ons' internal tags (`leech`, `marked`) in `addon/ankihub_br/protection/`
-- [ ] T083 [P] [US11] Build protection config UI (lista de campos/tags por deck) in `frontend/src/app/decks/[id]/protection/page.tsx`
+- [X] T078 [P] [US11] Contract test `GET`/`PUT /decks/{id}/protection/me/` in `backend/tests/contract/test_protection.py`
+- [X] T079 [P] [US11] pytest-anki test: campo/tag protegido preservado ao aplicar delta in `addon/tests/unit/test_protection.py`
+- [X] T080 [US11] Create ProtectedFieldConfig/ProtectedTagConfig models and endpoints in `backend/apps/protection/models.py`, `views.py`
+- [X] T081 [US11] Implement add-on protection lookup before delta apply (config de deck + tag `AnkiHubBR_Protect::<Campo>`) in `addon/ankihub_br/protection/`
+- [X] T082 [US11] Implement guard against touching other add-ons' internal tags (`leech`, `marked`) in `addon/ankihub_br/protection/`
+- [X] T083 [P] [US11] Build protection config UI (lista de campos/tags por deck) in `frontend/src/app/decks/[id]/protection/page.tsx`
 
 **Checkpoint**: 🎯 Fatia P2 completa
 
@@ -258,9 +258,9 @@
 
 **Independent Test**: Convidar usuário, aceitar convite, confirmar mesmo nível de permissão, e confirmar bloqueio ao tentar remover o único moderador restante.
 
-- [ ] T084 [P] [US10] Contract test invite/accept/remove moderator in `backend/tests/contract/test_moderators.py`
-- [ ] T085 [US10] Implement moderator invite/accept/remove endpoints with last-moderator guard in `backend/apps/catalog/views.py`
-- [ ] T086 [P] [US10] Build moderator management UI (convidar, listar, remover) in `frontend/src/app/decks/[id]/moderators/page.tsx`
+- [X] T084 [P] [US10] Contract test invite/accept/remove moderator in `backend/tests/contract/test_moderators.py`
+- [X] T085 [US10] Implement moderator invite/accept/remove endpoints with last-moderator guard in `backend/apps/catalog/views.py`
+- [X] T086 [P] [US10] Build moderator management UI (convidar, listar, remover) in `frontend/src/app/decks/[id]/moderators/page.tsx`
 
 **Checkpoint**: US10 funciona isoladamente
 
@@ -272,10 +272,10 @@
 
 **Independent Test**: Solicitar exclusão, cancelar dentro do prazo, solicitar exportação e confirmar JSON com dados pessoais/sugestões/comentários.
 
-- [ ] T087 [P] [US12] Contract test deletion-request and export in `backend/tests/contract/test_account_privacy.py`
-- [ ] T088 [US12] Implement deletion-request schedule/cancel and 7-day grace job in `backend/apps/accounts/views.py`, `jobs.py`
-- [ ] T089 [US12] Implement JSON data-export endpoint in `backend/apps/accounts/views.py`
-- [ ] T090 [P] [US12] Build "Minha conta" privacy screen (consentimentos, exportar, excluir) in `frontend/src/app/account/privacy/page.tsx`
+- [X] T087 [P] [US12] Contract test deletion-request and export in `backend/tests/contract/test_account_privacy.py`
+- [X] T088 [US12] Implement deletion-request schedule/cancel and 7-day grace job in `backend/apps/accounts/views.py`, `jobs.py`
+- [X] T089 [US12] Implement JSON data-export endpoint in `backend/apps/accounts/views.py`
+- [X] T090 [P] [US12] Build "Minha conta" privacy screen (consentimentos, exportar, excluir) in `frontend/src/app/account/privacy/page.tsx`
 
 **Checkpoint**: US12 funciona isoladamente
 
@@ -287,11 +287,11 @@
 
 **Independent Test**: Denunciar um comentário, revisar e remover pelo Django admin, confirmar soft-ban reversível e e-mail de notificação ao autor removido.
 
-- [ ] T091 [P] [US13] Contract test report creation on comments/suggestion-comments in `backend/tests/contract/test_reports.py`
-- [ ] T092 [US13] Create Report model and report-creation endpoints in `backend/apps/discussions/models.py`, `views.py`
-- [ ] T093 [US13] Register Report in Django admin with remove-content and suspend-author actions in `backend/apps/discussions/admin.py`
-- [ ] T094 [US13] Implement synchronous email notification to removed-content author in `backend/apps/discussions/admin.py`
-- [ ] T095 [P] [US13] Build "Denunciar" button on comments and suggestion messages in `frontend/src/components/ReportButton.tsx`
+- [X] T091 [P] [US13] Contract test report creation on comments/suggestion-comments in `backend/tests/contract/test_reports.py`
+- [X] T092 [US13] Create Report model and report-creation endpoints in `backend/apps/discussions/models.py`, `views.py`
+- [X] T093 [US13] Register Report in Django admin with remove-content and suspend-author actions in `backend/apps/discussions/admin.py`
+- [X] T094 [US13] Implement synchronous email notification to removed-content author in `backend/apps/discussions/admin.py`
+- [X] T095 [P] [US13] Build "Denunciar" button on comments and suggestion messages in `frontend/src/components/ReportButton.tsx`
 
 **Checkpoint**: Todas as 13 user stories funcionais independentemente
 
@@ -299,11 +299,11 @@
 
 ## Phase 16: Polish & Cross-Cutting Concerns
 
-- [ ] T096 [P] Audit mobile-first 360px layout (sem rolagem horizontal) em todas as páginas de `frontend/src/`
-- [ ] T097 [P] Add `Accept`-header API version negotiation middleware + teste de compatibilidade retroativa in `backend/config/middleware.py`
-- [ ] T098 [P] Verify Sentry captures errors end-to-end in `backend/` and `addon/`
+- [X] T096 [P] Audit mobile-first 360px layout (sem rolagem horizontal) em todas as páginas de `frontend/src/`
+- [X] T097 [P] Add `Accept`-header API version negotiation middleware + teste de compatibilidade retroativa in `backend/config/middleware.py`
+- [X] T098 [P] Verify Sentry captures errors end-to-end in `backend/` and `addon/`
 - [ ] T099 Run quickstart.md validation scenarios 1–3 end-to-end
-- [ ] T100 [P] Security hardening pass: confirm `nh3` allowlist, rate limits, HTTPS-only settings in `backend/config/settings/`
+- [X] T100 [P] Security hardening pass: confirm `nh3` allowlist, rate limits, HTTPS-only settings in `backend/config/settings/`
 
 ---
 
@@ -388,11 +388,11 @@ Com múltiplos desenvolvedores, após Foundational:
 
 **Purpose**: Lacunas entre spec/plan/contracts e o tasks.md original, detectadas por /speckit-converge em 2026-07-12 — trabalho não coberto por nenhuma tarefa existente (T017–T100 seguem válidas e não são duplicadas aqui)
 
-- [ ] T101 [CRITICAL] Implement add-on login dialog and Supabase Auth token acquisition/storage (feeding `AnkiHubBrClient`) in `addon/ankihub_br/gui/` per FR-031 / plan: addon gui login dialog (missing)
-- [ ] T102 Implement the create-only add-on initial deck import flow (export local deck once → `POST /api/v1/decks/{id}/publish/` with note types, notes, media; surface `409` without retry when the deck already exists) in `addon/ankihub_br/main/` and `addon/ankihub_br/gui/` per plan: contracts/sync.md publish endpoint (missing)
+- [X] T101 [CRITICAL] Implement add-on login dialog and Supabase Auth token acquisition/storage (feeding `AnkiHubBrClient`) in `addon/ankihub_br/gui/` per FR-031 / plan: addon gui login dialog (missing)
+- [X] T102 Implement the create-only add-on initial deck import flow (export local deck once → `POST /api/v1/decks/{id}/publish/` with note types, notes, media; surface `409` without retry when the deck already exists) in `addon/ankihub_br/main/` and `addon/ankihub_br/gui/` per plan: contracts/sync.md publish endpoint (missing)
 - [X] T103 Add subdeck placement of notes to the backend data model (e.g. `Note.anki_deck_path` in `backend/apps/notes/models.py`) and include the subdecks segment in publish/delta/full payloads per FR-034 (missing)
 - [X] T104 Create MediaFile model (`deck`, `content_hash`, `storage_path`, `original_filename`) in `backend/apps/notes/models.py` per plan: data-model MediaFile / FR-036 (missing)
-- [ ] T105 Apply `RATELIMIT_SUGGESTION_RATE` via `@ratelimit` to suggestion-submission endpoints in `backend/apps/suggestions/views.py` per FR-052 (partial)
+- [X] T105 Apply `RATELIMIT_SUGGESTION_RATE` via `@ratelimit` to suggestion-submission endpoints in `backend/apps/suggestions/views.py` per FR-052 (partial)
 - [X] T106 Create `backend/.env.example` and `frontend/.env.local.example` referenced by quickstart.md setup steps per plan: quickstart.md (missing)
 
 ---
@@ -427,3 +427,27 @@ Com múltiplos desenvolvedores, após Foundational:
 - [ ] T123 Add the planned Playwright P1 flow covering cadastro→assinatura→sugestão→moderação in `frontend/tests/e2e/` per plan: testing strategy (missing)
 - [ ] T124 Reject votes by a suggestion's own author in `backend/apps/suggestions/views.py` and hide self-vote controls in the Community Suggestions UI per US5/AC4 / FR-023 (partial)
 - [ ] T125 Persist, sanitize, display in the diff, and apply proposed tag additions/updates for single and bulk change suggestions per US4/AC3, US4/AC5 / FR-013 (partial)
+
+---
+
+## Phase 20: Convergence
+
+**Purpose**: Lacunas adicionais detectadas no estado atual do código, sem duplicar os 48 itens ainda abertos em T069–T125
+
+- [ ] T126 [CRITICAL] Replace HS256-only Supabase JWT verification with current JWKS-aware verification that validates issuer, audience, and expiry while retaining explicitly configured legacy-token compatibility per Constitution IV / Constitution VI / FR-002 (contradicts)
+- [ ] T127 [CRITICAL] Isolate every Django-managed table from the Supabase Data API using a private schema or explicit grants/revokes/RLS, and add a deployment security check proving `anon`/`authenticated` cannot bypass Django authorization per Constitution III / Constitution IV (missing)
+- [ ] T128 [CRITICAL] Add a repeatable `.ankiaddon` build that vendors `peewee`, `requests`, and `sentry-sdk` into a package-local import path and prove the built add-on imports without development-site packages per plan: add-on vendoring constraint / US3 (missing)
+- [ ] T129 [CRITICAL] Allowlist configured frontend origins in Django and add an authenticated CORS preflight check for the documented separate frontend/backend topology per FR-002 / plan: independent frontend-backend deployments (missing)
+- [ ] T130 Complete password recovery with a Supabase recovery callback, new-password form, configured redirect, and focused browser check proving the user can choose a new password after opening the email link per US1/AC3 / FR-003 (partial)
+- [ ] T131 Replace removed `django.utils.timezone.utc` usage in `backend/apps/sync/views.py` with supported UTC handling and add a contract test for a valid naive ISO-8601 `since_mod` per FR-034 (partial)
+- [ ] T132 Make catalog tag/recommendation and note-field search handle accented pt-BR text correctly on PostgreSQL JSONB, with production-like contract cases for terms such as `licitação` per FR-007 / FR-010 / FR-056 (partial)
+- [ ] T133 Rate-limit initial deck publish and media signed-URL issuance per authenticated user without blocking the legitimate multi-file fan-out of one sync run, with focused abuse checks per FR-052 / Constitution IV (partial)
+- [ ] T134 Reject empty, no-op, and unknown-field/tag change suggestions server-side for both individual and bulk submissions while preserving valid shared corrections per US4/AC4 / FR-020 (partial)
+- [ ] T135 Serialize moderation decisions by locking and rechecking the suggestion inside the decision transaction, with a focused check proving concurrent accept/reject attempts cannot overwrite a terminal status per FR-027 / US5/AC9 (partial)
+- [ ] T136 Add the minimal Heroku runtime entrypoint and production server dependency, pin the planned Python runtime, and align `backend/.env.example` plus quickstart.md with the Supavisor pooled `DATABASE_URL` and actual Supabase key variable names per plan: Heroku/Supavisor deployment (missing)
+- [ ] T137 Provision or document an idempotent private Supabase Storage `media` bucket and verify backend-generated signed upload/download URLs against it per FR-036 / plan: Supabase Storage (missing)
+- [ ] T138 Make the Community Suggestions `created_before` date include the entire selected calendar day and add a boundary contract case per FR-022 / US5/AC2 (partial)
+- [ ] T139 Remove public moderator email addresses from general deck detail/catalog responses and UI, replacing them with the minimum non-sensitive role signal needed for moderation controls per Constitution III (unrequested)
+- [ ] T140 Eliminate per-suggestion target-note and vote-count queries in the Community Suggestions list using batched prefetch/annotations, with a bounded-query-count check per FR-054 (partial)
+- [ ] T141 Paginate or load additional suggestion-thread comments so comments beyond the first chronological page, including a newly posted 51st comment, remain visible per US5/AC5 / FR-024 (partial)
+- [ ] T142 Restore clean configured quality checks by fixing the current Ruff errors and Black/Prettier drift while excluding generated artifacts from formatting checks per plan: linting/formatting (partial)

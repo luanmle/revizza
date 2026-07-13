@@ -15,8 +15,18 @@ def test_blocks_javascript_urls():
 
 
 def test_keeps_anki_compatible_formatting():
-    html = '<span style="font-size:18px">A</span><ul><li>i</li></ul><u>u</u>'
+    html = (
+        '<span style="font-size:18px">A</span>'
+        '<div style="text-align:center">B</div><ul><li>i</li></ul><u>u</u>'
+    )
     assert sanitize_html(html) == html
+
+
+def test_only_keeps_required_style_properties():
+    clean = sanitize_html(
+        '<div style="position:fixed;background:url(javascript:x);text-align:right">x</div>'
+    )
+    assert clean == '<div style="text-align:right">x</div>'
 
 
 def test_sanitize_field_values_covers_all_fields():

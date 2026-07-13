@@ -9,6 +9,7 @@ PROFILE_FIELDS = [
     "target_board",
     "consent_marketing_emails",
     "consent_research_data",
+    "deletion_requested_at",
     "created_at",
 ]
 

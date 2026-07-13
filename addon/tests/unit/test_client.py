@@ -1,4 +1,5 @@
 from ankihub_br.ankihub_br_client import AnkiHubBrClient
+from ankihub_br.ankihub_br_client import client as client_module
 from ankihub_br.gui import _save_preferences
 
 
@@ -57,6 +58,35 @@ def test_preferences_are_patched_per_subscription(monkeypatch):
                 "sync_trigger_on_anki_open": False,
                 "sync_trigger_chained_native": True,
                 "delete_notes_on_removal": False,
+            },
+        )
+    ]
+
+
+def test_signed_media_upload_does_not_send_api_authorization(monkeypatch):
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(
+        client_module.requests,
+        "put",
+        lambda url, **kwargs: calls.append((url, kwargs)) or Response(),
+    )
+    client = AnkiHubBrClient("https://api.example.com", token="secret")
+
+    client.upload_signed_media("https://storage.example/upload?token=signed", "a.png", b"png")
+
+    assert calls == [
+        (
+            "https://storage.example/upload?token=signed",
+            {
+                "files": {
+                    "file": ("a.png", b"png", "application/octet-stream")
+                },
+                "timeout": 30,
             },
         )
     ]

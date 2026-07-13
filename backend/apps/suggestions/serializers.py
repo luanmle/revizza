@@ -1,8 +1,20 @@
+from html import unescape
+
+from django.utils.html import strip_tags
 from rest_framework import serializers
 
 from apps.notes.sanitize import sanitize_field_values
 
 from .models import Suggestion, SuggestionVote
+
+
+def empty_field_names(field_values: dict[str, str] | None) -> list[str]:
+    """Campos sem texto visível, mantendo a ordem enviada pelo tipo de nota."""
+    return [
+        field
+        for field, value in (field_values or {}).items()
+        if not unescape(strip_tags(value)).replace("\xa0", "").strip()
+    ]
 
 
 class ChangeSuggestionSerializer(serializers.ModelSerializer):
@@ -49,6 +61,92 @@ class BulkChangeSuggestionSerializer(ChangeSuggestionSerializer):
     )
 
 
+class NewNoteSuggestionSerializer(serializers.ModelSerializer):
+    proposed_field_values = serializers.DictField(
+        child=serializers.CharField(allow_blank=True)
+    )
+    tags = serializers.ListField(
+        source="proposed_tags",
+        child=serializers.CharField(max_length=100),
+        allow_empty=False,
+    )
+    note_ids = serializers.SerializerMethodField()
+    empty_fields = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Suggestion
+        fields = [
+            "id",
+            "type",
+            "deck",
+            "status",
+            "justification",
+            "proposed_field_values",
+            "tags",
+            "empty_fields",
+            "note_ids",
+            "created_at",
+        ]
+        read_only_fields = ["id", "type", "deck", "status", "created_at"]
+
+    def validate_proposed_field_values(self, value):
+        return sanitize_field_values(value)
+
+    def validate_tags(self, value):
+        tags = [tag.strip() for tag in value]
+        if any(not tag for tag in tags):
+            raise serializers.ValidationError("Tags não podem ser vazias.")
+        return list(dict.fromkeys(tags))
+
+    def validate(self, attrs):
+        values = attrs["proposed_field_values"]
+        expected = self.context["deck"].note_type.field_names
+        missing = [field for field in expected if field not in values]
+        unknown = [field for field in values if field not in expected]
+        if missing or unknown:
+            detail = []
+            if missing:
+                detail.append(f"Campos ausentes: {', '.join(missing)}.")
+            if unknown:
+                detail.append(f"Campos desconhecidos: {', '.join(unknown)}.")
+            raise serializers.ValidationError(
+                {"proposed_field_values": " ".join(detail)}
+            )
+        return attrs
+
+    def get_note_ids(self, suggestion) -> list[str]:
+        return [
+            str(note_id)
+            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
+        ]
+
+    def get_empty_fields(self, suggestion) -> list[str]:
+        return empty_field_names(suggestion.proposed_field_values)
+
+
+class DeletionSuggestionSerializer(serializers.ModelSerializer):
+    note_ids = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Suggestion
+        fields = [
+            "id",
+            "type",
+            "deck",
+            "status",
+            "justification",
+            "note_ids",
+            "created_at",
+        ]
+        read_only_fields = ["id", "type", "deck", "status", "created_at"]
+
+    def get_note_ids(self, suggestion) -> list[str]:
+        return [
+            str(note_id)
+            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
+        ]
+
+
 class SuggestionDetailSerializer(serializers.ModelSerializer):
     """Saída da lista/detalhe da tela de Community Suggestions (FR-020 a FR-022)."""
 
@@ -56,6 +154,8 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
     # ponytail: count por instância — trocar por annotate se a lista pesar
     likes_count = serializers.SerializerMethodField()
     dislikes_count = serializers.SerializerMethodField()
+    tags = serializers.ListField(source="proposed_tags", read_only=True)
+    empty_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = Suggestion
@@ -68,6 +168,8 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
             "change_category",
             "justification",
             "proposed_field_values",
+            "tags",
+            "empty_fields",
             "note_ids",
             "likes_count",
             "dislikes_count",
@@ -86,6 +188,9 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
 
     def get_dislikes_count(self, suggestion) -> int:
         return suggestion.votes.filter(value=SuggestionVote.Value.DISLIKE).count()
+
+    def get_empty_fields(self, suggestion) -> list[str]:
+        return empty_field_names(suggestion.proposed_field_values)
 
 
 class SuggestionVoteSerializer(serializers.Serializer):

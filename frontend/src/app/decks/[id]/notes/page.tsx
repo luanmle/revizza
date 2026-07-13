@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { SearchX } from "lucide-react";
+import { MessageSquare, SearchX } from "lucide-react";
 import { api, ApiError, type Paginated } from "@/lib/api-client";
+import CommentThread from "@/components/CommentThread";
 import NotePreview, { type NoteTypeInfo } from "@/components/NotePreview";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ function snippet(fieldValues: Record<string, string>): string {
 
 function NoteResult({ note, deckId }: { note: NoteListItem; deckId: string }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [discussionOpen, setDiscussionOpen] = useState(false);
   // detalhe (templates+css) só é buscado quando o preview abre
   const { data: detail, isPending } = useQuery<NoteDetail>({
     queryKey: ["note", note.id],
@@ -81,11 +83,32 @@ function NoteResult({ note, deckId }: { note: NoteListItem; deckId: string }) {
           >
             Sugerir mudança
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDiscussionOpen((open) => !open)}
+            aria-expanded={discussionOpen}
+          >
+            <MessageSquare aria-hidden /> Discussão
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            nativeButton={false}
+            render={
+              <Link
+                href={`/decks/${deckId}/notes/${note.id}/suggest-deletion`}
+              />
+            }
+          >
+            Sugerir exclusão
+          </Button>
         </div>
         {previewOpen && isPending && <Skeleton className="h-64 w-full" />}
         {previewOpen && detail && (
           <NotePreview noteType={detail.note_type} fieldValues={detail.field_values} />
         )}
+        {discussionOpen && <CommentThread noteId={note.id} />}
       </CardContent>
     </Card>
   );

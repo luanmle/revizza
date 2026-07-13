@@ -29,7 +29,11 @@ class Suggestion(BaseModel):
         "catalog.Deck", on_delete=models.CASCADE, related_name="suggestions"
     )
     author = models.ForeignKey(
-        "accounts.User", on_delete=models.CASCADE, related_name="suggestions"
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suggestions",
     )
     # obrigatório apenas quando type=change (FR-013) — validado no serializer
     change_category = models.CharField(
@@ -39,6 +43,7 @@ class Suggestion(BaseModel):
     proposed_field_values = models.JSONField(
         null=True, blank=True
     )  # {campo: html sanitizado via nh3}; usado em change/new_note
+    proposed_tags = models.JSONField(default=list, blank=True)
     # terminal ao sair de pending — sem reversão via UI (FR-027)
     status = models.CharField(
         max_length=8, choices=Status.choices, default=Status.PENDING

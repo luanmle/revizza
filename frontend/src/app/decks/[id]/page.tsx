@@ -64,9 +64,20 @@ export default function DeckDetailPage() {
       <p>Moderadores: {deck.moderators.map((m) => m.email).join(", ") || "—"}</p>
 
       {deck.is_subscribed ? (
-        <button onClick={() => unsubscribe.mutate()} disabled={busy}>
-          Cancelar inscrição
-        </button>
+        <>
+          <button onClick={() => unsubscribe.mutate()} disabled={busy}>
+            Cancelar inscrição
+          </button>
+          <p>
+            <Link href={`/decks/${id}/suggest-new-note`}>Sugerir nota nova</Link>
+          </p>
+          <p>
+            <Link href={`/decks/${id}/protection`}>Configurar proteção pessoal</Link>
+          </p>
+          <p>
+            <Link href={`/decks/${id}/moderators`}>Ver moderadores</Link>
+          </p>
+        </>
       ) : (
         <button onClick={() => subscribe.mutate()} disabled={busy}>
           Inscrever-se

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Case, F, IntegerField, Q, TextField, Value, When
 from django.db.models.functions import Cast
 from django.shortcuts import get_object_or_404
@@ -5,14 +6,18 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import User
 from apps.base import json_escaped as _json_escaped
+from apps.notes.views import _require_subscription
 from config.pagination import DefaultCursorPagination
 
-from .models import Deck, Subscription
+from .models import Deck, DeckModerator, Subscription
 from .serializers import (
     DeckDetailSerializer,
+    DeckModeratorSerializer,
     DeckSerializer,
     DeckSubscribedSerializer,
+    ModeratorInviteSerializer,
     SubscriptionSerializer,
 )
 
@@ -106,4 +111,106 @@ class SubscriptionMeView(APIView):
         Deck.objects.filter(pk=deck_id).update(
             subscriber_count=F("subscriber_count") - 1
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeckModeratorPagination(DefaultCursorPagination):
+    ordering = "created_at"
+
+
+class DeckModeratorListCreateView(generics.ListAPIView):
+    serializer_class = DeckModeratorSerializer
+    pagination_class = DeckModeratorPagination
+
+    def get_deck(self):
+        return get_object_or_404(Deck, pk=self.kwargs["deck_id"])
+
+    def get_queryset(self):
+        deck = self.get_deck()
+        _require_subscription(self.request.user, deck)
+        return DeckModerator.objects.filter(deck=deck).select_related("user")
+
+    def post(self, request, deck_id):
+        deck = self.get_deck()
+        if not DeckModerator.objects.filter(
+            deck=deck,
+            user=request.user,
+            status=DeckModerator.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {"detail": "Apenas moderadores ativos podem enviar convites."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = ModeratorInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invited = get_object_or_404(
+            User, email__iexact=serializer.validated_data["email"]
+        )
+        if DeckModerator.objects.filter(deck=deck, user=invited).exists():
+            return Response(
+                {"detail": "Este usuário já é moderador ou possui convite pendente."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        invite = DeckModerator.objects.create(
+            deck=deck,
+            user=invited,
+            invited_by=request.user,
+            status=DeckModerator.Status.PENDING,
+        )
+        return Response(
+            DeckModeratorSerializer(invite).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class DeckModeratorInviteAcceptView(APIView):
+    def post(self, request, invite_id):
+        with transaction.atomic():
+            invite = get_object_or_404(
+                DeckModerator.objects.select_for_update(), pk=invite_id
+            )
+            if invite.user_id != request.user.id:
+                return Response(
+                    {"detail": "Somente o usuário convidado pode aceitar."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if invite.status != DeckModerator.Status.PENDING:
+                return Response(
+                    {"detail": "Este convite já foi aceito."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            invite.status = DeckModerator.Status.ACTIVE
+            invite.save(update_fields=["status", "updated_at"])
+        return Response(DeckModeratorSerializer(invite).data)
+
+
+class DeckModeratorRemoveView(APIView):
+    def delete(self, request, deck_id, user_id):
+        deck = get_object_or_404(Deck, pk=deck_id)
+        if not DeckModerator.objects.filter(
+            deck=deck,
+            user=request.user,
+            status=DeckModerator.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {"detail": "Apenas moderadores ativos podem remover moderadores."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        with transaction.atomic():
+            active = list(
+                DeckModerator.objects.select_for_update().filter(
+                    deck=deck, status=DeckModerator.Status.ACTIVE
+                )
+            )
+            target = get_object_or_404(
+                DeckModerator.objects.select_for_update(),
+                deck=deck,
+                user_id=user_id,
+            )
+            if target.status == DeckModerator.Status.ACTIVE and len(active) == 1:
+                return Response(
+                    {"detail": "O deck deve manter pelo menos um moderador ativo."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            target.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

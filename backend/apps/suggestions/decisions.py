@@ -1,13 +1,18 @@
 """Decisão de moderação: accept aplica na nota oficial e enfileira sync (FR-025 a FR-027)."""
 
+import uuid
+
 from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Suggestion
+from apps.notes.models import Note
+
+from .models import Suggestion, SuggestionTargetNote
 from .permissions import is_active_deck_moderator
 from .serializers import SuggestionDetailSerializer
 
@@ -59,7 +64,19 @@ class SuggestionAcceptView(SuggestionDecisionView):
                 note.deleted_at = now
                 note.mod = now
                 note.save()
-        # ponytail: type=new_note entra junto com o endpoint de sugestão de nota nova (FR-018)
+        elif suggestion.type == Suggestion.Type.NEW_NOTE:
+            note = Note.objects.create(
+                deck=suggestion.deck,
+                note_type=suggestion.deck.note_type,
+                field_values=suggestion.proposed_field_values,
+                tags=suggestion.proposed_tags,
+                guid=uuid.uuid4().hex,
+                mod=now,
+            )
+            SuggestionTargetNote.objects.create(suggestion=suggestion, note=note)
+            suggestion.deck.__class__.objects.filter(pk=suggestion.deck_id).update(
+                note_count=F("note_count") + 1
+            )
         suggestion.status = Suggestion.Status.ACCEPTED
 
 
