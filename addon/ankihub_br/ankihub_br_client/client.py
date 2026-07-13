@@ -1,0 +1,81 @@
+"""Única camada do add-on que fala HTTP com o backend (plan.md Project Structure).
+
+Auth via Bearer token do Supabase, retry/backoff automático em 429/5xx (respeita
+Retry-After — FR-032) e versionamento de contrato via header Accept.
+"""
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+API_VERSION = "1"
+DEFAULT_TIMEOUT = 30  # segundos
+
+
+class AnkiHubBrClient:
+    def __init__(
+        self,
+        api_base_url: str,
+        token: str | None = None,
+        anki_version: str | None = None,
+    ):
+        self.api_base_url = api_base_url.rstrip("/")
+        self.token = token
+        self.session = requests.Session()
+        retry = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+            respect_retry_after_header=True,
+        )
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
+        self.session.mount("http://", HTTPAdapter(max_retries=retry))
+        self.session.headers["Accept"] = f"application/json; version={API_VERSION}"
+        if anki_version:
+            # telemetria/diagnóstico da política LTS (FR-038, contracts/sync.md)
+            self.session.headers["X-Anki-Version"] = anki_version
+
+    def _request(self, method: str, path: str, **kwargs) -> requests.Response:
+        if self.token:
+            self.session.headers["Authorization"] = f"Bearer {self.token}"
+        kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
+        response = self.session.request(method, f"{self.api_base_url}{path}", **kwargs)
+        response.raise_for_status()
+        return response
+
+    def get(self, path: str, **kwargs) -> requests.Response:
+        return self._request("GET", path, **kwargs)
+
+    def post(self, path: str, **kwargs) -> requests.Response:
+        return self._request("POST", path, **kwargs)
+
+    def put(self, path: str, **kwargs) -> requests.Response:
+        return self._request("PUT", path, **kwargs)
+
+    def patch(self, path: str, **kwargs) -> requests.Response:
+        return self._request("PATCH", path, **kwargs)
+
+    def delete(self, path: str, **kwargs) -> requests.Response:
+        return self._request("DELETE", path, **kwargs)
+
+    # --- API de sincronização (contracts/sync.md, contracts/catalog.md) ---
+
+    def get_subscribed_decks(self) -> list[dict]:
+        return self.get("/decks/", params={"subscribed": "1"}).json()["results"]
+
+    def get_deck_delta(self, deck_id: str, since_mod: str | None = None) -> dict:
+        params = {"since_mod": since_mod} if since_mod else None
+        return self.get(f"/decks/{deck_id}/sync/delta/", params=params).json()
+
+    def get_deck_full(self, deck_id: str) -> dict:
+        return self.get(f"/decks/{deck_id}/sync/full/").json()
+
+    def get_media_url(self, content_hash: str) -> str:
+        return self.get(f"/media/{content_hash}/").json()["url"]
+
+    def download_file(self, url: str) -> bytes:
+        # URL pré-assinada do Storage — sem o header Authorization da API
+        response = requests.get(url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        return response.content

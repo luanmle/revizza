@@ -1,0 +1,9 @@
+peewee>=3.17
+requests>=2.31
+# ponytail: pytest-anki (última versão 1.0.0b7, de 2021) importa PyQt5 e é incompatível
+# com anki>=25 (Qt6-only); os testes usam anki.collection.Collection headless via pytest puro.
+# Reavaliar se pytest-anki ganhar release compatível com Qt6.
+anki>=26.0
+aqt>=26.0
+pytest>=8.0
+sentry-sdk>=2.0  # vendorizado no build do .ankiaddon (research.md §10)

@@ -1,0 +1,7 @@
+# ponytail: um config na raiz cobre backend/ e addon/; separar por projeto só se divergirem
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.black]
+target-version = ["py312"]

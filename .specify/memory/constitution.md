@@ -1,0 +1,241 @@
+<!--
+Sync Impact Report
+==================
+Version change: 1.0.1 → 1.1.0 (minor — two new principles added)
+Modified principles: none renamed/removed
+Added sections:
+  - Principle VI. Current Docs & Minimal Code (context7 + ponytail)
+  - Principle VII. Design Tooling Pipeline (ui-ux-pro-max + impeccable)
+Removed sections: none
+Modified sections:
+  - Technology Constraints — Frontend entry expanded with the styling
+    stack ratified on 2026-07-13: Tailwind CSS 4 + shadcn/ui (preset
+    base-nova, installed and build-verified in `frontend/`).
+Templates requiring updates:
+  - ✅ .specify/templates/plan-template.md — no change needed (the
+    Constitution Check gate reads this file dynamically).
+  - ✅ .specify/templates/spec-template.md — no change needed.
+  - ✅ .specify/templates/tasks-template.md — no change needed.
+  - ✅ CLAUDE.md — updated in the same pass: removed stale claims that
+    the constitution was still an unfilled template.
+  - ✅ frontend/AGENTS.md — already aligned (context7/ponytail/styling
+    rules recorded there on 2026-07-13, before this amendment).
+  - ⚠ rascunho-frontend.md — working draft that motivated this
+    amendment; fold into spec-kit artifacts and delete (its §8 tracks
+    the remaining steps).
+Follow-up TODOs:
+  - TODO(NUMERIC_KPIS): MVP success-metric targets in the PRD are marked
+    `TBD-valor`; no constitutional gate depends on them yet.
+  - TODO(LAUNCH_DEADLINE): No launch deadline has been set by the user
+    (PRD §5.3); revisit if a Development Workflow deadline gate is needed.
+  - TODO(HOSTING_YEAR2): PRD §5.3 flags a new open decision — revisit
+    backend hosting once the Heroku year-1 credits expire (migrate to
+    Railway/Render/Fly.io, or move to paid Heroku).
+  - TODO(DESIGN_SYSTEM): `design-system/MASTER.md` not yet generated;
+    Principle VII expects it as the persistent reference for every new
+    screen (see rascunho-frontend.md §3).
+-->
+
+# AnkiHub Brasil Constitution
+
+## Core Principles
+
+### I. Parity Over Reinvention
+
+When a design or API question already has a proven answer in the real
+AnkiHub product, adopt that answer instead of designing a novel one. This
+applies to API conventions (cursor pagination via `next`, trailing-slash
+routes, bulk-suggestion endpoints), the field/tag protection convention
+(`AnkiHub_Protect::<field>`-style tags), the delta-sync ordering (note
+types → notes → subdeck reorganization), and stack choices already
+confirmed in the PRD (Django + DRF, Supabase-managed auth/storage). A
+deviation from an established AnkiHub pattern MUST be justified in the
+spec/plan with a concrete reason it doesn't fit this project — "we could
+design it differently" is not sufficient justification on its own.
+
+**Rationale**: This is a from-scratch team building a niche product with a
+well-documented predecessor. Re-deriving already-solved problems (pagination
+schemes, sync protocols, protection conventions) is pure schedule risk with
+no compensating benefit to users.
+
+### II. Unidirectional Sync — Web Is the Source of Truth (NON-NEGOTIABLE)
+
+The web platform is always the authoritative source for deck/note content.
+The Anki add-on MUST NOT push local edits back to the backend under any
+circumstance in the MVP; all content changes flow web → Anki local only,
+via the suggestion → moderation → sync-queue pipeline. Locally protected
+fields/tags (per-deck configuration or the `AnkiHubBR_Protect::<Campo>` tag
+convention) are the only exception a sync operation may leave untouched.
+When a delta is structurally too large to reconcile safely (e.g. a note
+type's template count changed), the add-on MUST fall back to a full deck
+resync rather than partially applying the delta.
+
+**Rationale**: This is the explicitly identified mitigation (PRD §5.2) for
+the highest-impact technical risk in the product: sync conflicts that could
+corrupt, duplicate, or silently delete a user's local notes and spaced-
+repetition history. Any bidirectional-sync shortcut reintroduces that risk.
+
+### III. Privacy & LGPD Compliance by Design
+
+Every feature touching personal data MUST satisfy, from first
+implementation (not retrofitted later): explicit and separately-grantable
+consent for optional data uses (marketing email, anonymized research data)
+that is off by default and reversible at any time; a 7-day grace period
+before permanent account deletion; and machine-readable (JSON) export of a
+user's own data on request. Suggestions, comments, and reports are always
+tied to an authenticated author — anonymous submission is out of scope for
+the MVP, because moderation and accountability depend on it.
+
+**Rationale**: LGPD compliance is a named legal requirement in the PRD
+(§4.4, §5.2), not a nice-to-have, and the product's subject matter
+(concurso/legal content, public discussion) makes reports and moderation a
+near-certainty from day one.
+
+### IV. Secure by Default
+
+Passwords are never stored in plaintext (hash via the auth provider).
+All add-on↔backend and web↔backend traffic MUST use HTTPS exclusively.
+Rich-text HTML submitted through the note-suggestion editor (US-05/US-06)
+MUST be sanitized server-side with an allowlist of tags/attributes — no
+`<script>` tags, no inline event handlers — before it is persisted or
+rendered to any other user. Sync and suggestion-submission endpoints MUST
+be rate-limited. Concurrent syncs for the same user MUST be blocked to
+prevent concurrent-write corruption of the local SQLite collection.
+
+**Rationale**: The rich-text editor intentionally accepts free-form HTML
+to stay compatible with native Anki fields, which the PRD explicitly flags
+as a stored-XSS attack surface (§4.4, §5.2). Treat that surface as hostile
+input by default rather than trusting it because it "looks like" editor
+output.
+
+### V. MVP Scope Discipline (YAGNI)
+
+Before adding anything not in an approved user story, check the PRD's
+Non-Objectives list (§2.3) first. Features explicitly deferred to v1.1/v2.0
+(async task queue, notifications, Optional Tag Groups, moderator hierarchy,
+AI-based search/chatbot, monetization, native mobile app, version
+history/rollback) MUST NOT be pulled forward into MVP work without an
+explicit decision recorded in the spec, because each was deliberately
+excluded to keep the MVP shippable. Prefer a managed service already
+decided in the stack (Supabase Auth/Storage/DB) over building custom
+infrastructure for the same problem.
+
+**Rationale**: The PRD already did the scope-cutting work once, with
+reasons per deferred item; re-litigating scope inside implementation work
+(rather than at the spec stage) is how MVPs quietly become the full
+roadmap.
+
+### VI. Current Docs & Minimal Code (context7 + ponytail)
+
+Code creation MUST consult current library documentation via the context7
+MCP before using any library API, rather than relying on memorized
+knowledge — the installed versions (Next.js 16, React 19, Tiptap 3, and
+the Python stack) are newer than model training data. For Next.js
+specifically, the vendored docs in `frontend/node_modules/next/dist/docs/`
+take precedence (see `frontend/AGENTS.md`). All code follows the ponytail
+discipline: the simplest working solution, native platform features and
+standard library before any new dependency, and no speculative
+abstractions. Deliberate shortcuts are marked with a `ponytail:` comment
+naming the ceiling and upgrade path, and diffs SHOULD pass
+`/ponytail-review` before merge (`/ponytail-audit` and `/ponytail-debt`
+are available for repo-wide sweeps and the shortcut ledger).
+
+**Rationale**: Wrong-from-memory API usage and over-engineered code are
+the two dominant sources of rework in AI-assisted development. This
+extends Principle V from *what* is built (scope) to *how* it is built
+(implementation style).
+
+### VII. Design Tooling Pipeline (ui-ux-pro-max + impeccable)
+
+UI/UX work MUST flow through the ratified tooling pipeline: the
+`ui-ux-pro-max` skills generate the visual foundation (design system,
+palette, typography, screen scaffolds — product category: collaborative
+study platform for Brazilian concurseiros), and the `impeccable` skill is
+the audit and art-direction gate (WCAG AA contrast, visual hierarchy,
+removal of generic AI styling) applied to every screen before it ships —
+its automatic hook findings on frontend edits are handled, not ignored.
+Screens are built on the ratified styling stack (Tailwind 4 + shadcn/ui;
+components come from the shadcn registry via MCP rather than being
+hand-rolled) and MUST satisfy FR-053: functional at 360px viewport width
+with no horizontal scrolling. The persistent design system document
+(`design-system/MASTER.md`, once generated) is the visual source of truth
+for every new screen.
+
+**Rationale**: The functional spec deliberately leaves visuals undefined;
+without a ratified generation→audit pipeline and a persistent design
+system, each screen invents its own look and the product accretes
+inconsistent, inaccessible UI that later needs wholesale retrofit.
+
+## Technology Constraints
+
+The following stack decisions are ratified in the PRD (§4.3) and MUST be
+treated as defaults, not open choices, for new specs/plans:
+
+- **Backend**: Python, Django + Django REST Framework.
+- **Frontend**: Next.js (React), styled with Tailwind CSS 4 + shadcn/ui
+  (preset base-nova, lucide icons — see `frontend/components.json`;
+  ratified 2026-07-13, installed and build-verified).
+- **Database**: Postgres via Supabase.
+- **Auth**: Supabase Auth (not DRF's native `TokenAuthentication`).
+- **Media storage**: Supabase Storage (S3-compatible, pre-signed URLs).
+- **Anki add-on**: Python, using the native `aqt`/`anki` libraries.
+- **Error tracking**: Sentry (backend and add-on).
+- **Backend compute hosting**: Heroku for year 1 (using already-available
+  credits covering ~1 year of dyno cost); no Heroku Postgres add-on — the
+  dyno connects directly to Supabase's pooled connection string
+  (`DATABASE_URL` via Supavisor). The Supabase project is provisioned in
+  the US East (Virginia) region rather than São Paulo, specifically to
+  stay co-located with Heroku (whose Common Runtime has no São Paulo
+  region) — backend↔DB latency matters more here than DB↔end-user
+  latency, since a page can fire several sequential queries. This is a
+  year-1 decision, not a permanent one: PRD §5.3 flags hosting as a
+  decision to revisit once the Heroku credits expire (candidates:
+  Railway, Render, Fly.io, or paid Heroku).
+
+A schema change to the core note/deck/card tables MUST remain mappable
+1:1 to Anki's native SQLite schema (`notes`, `notetypes`, `templates`,
+`fields`, `cards`, `col`) so that a local collection can be deterministically
+reconstructed from web-side data (PRD §4.2).
+
+## Development Workflow
+
+Feature work follows the spec-kit cycle already scaffolded in this repo:
+`speckit-specify` → `speckit-plan` → `speckit-tasks` → `speckit-implement`,
+with `speckit-clarify` used to resolve ambiguity before planning and
+`speckit-checklist`/`speckit-analyze` used for pre-implementation review.
+Every plan MUST pass a Constitution Check against this document before
+Phase 0 research begins, and re-check it after Phase 1 design; violations
+require an explicit entry in that plan's Complexity Tracking table
+justifying why a simpler, constitution-compliant alternative was rejected.
+`PRD-AnkiHub-Brasil.md` remains the authoritative scope document until/
+unless a spec explicitly supersedes part of it — specs should reference the
+relevant PRD user story (e.g. "US-08") rather than re-describing it.
+
+## Governance
+
+This constitution supersedes ad hoc technical or scope decisions made
+during implementation. Any conflict between a spec/plan and this document
+MUST be resolved by amending one of the two explicitly, not by silently
+deviating in code.
+
+**Amendment procedure**: Amendments are made via the `speckit-constitution`
+skill, which regenerates this file, assigns a new version per the
+versioning policy below, and propagates a Sync Impact Report identifying
+any dependent templates or documents that need matching updates.
+
+**Versioning policy** (semantic versioning applied to governance changes):
+- **MAJOR**: Backward-incompatible removal or redefinition of a principle
+  (e.g., reversing the unidirectional-sync rule).
+- **MINOR**: A new principle or section added, or materially expanded
+  guidance on an existing one.
+- **PATCH**: Wording clarifications, typo fixes, and non-semantic
+  refinements.
+
+**Compliance review**: Every `speckit-plan` run MUST perform the
+Constitution Check gate described above. Reviewers of any PR touching
+sync, suggestion moderation, personal data, or the rich-text editor should
+treat the corresponding principle (II, III, IV) as a hard gate, not a
+suggestion. Reviewers of frontend PRs should additionally hold the line on
+Principles VI and VII (docs-verified APIs, minimal code, design pipeline).
+
+**Version**: 1.1.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-13
