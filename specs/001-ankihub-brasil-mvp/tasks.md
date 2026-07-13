@@ -393,7 +393,7 @@ Com múltiplos desenvolvedores, após Foundational:
 - [X] T103 Add subdeck placement of notes to the backend data model (e.g. `Note.anki_deck_path` in `backend/apps/notes/models.py`) and include the subdecks segment in publish/delta/full payloads per FR-034 (missing)
 - [X] T104 Create MediaFile model (`deck`, `content_hash`, `storage_path`, `original_filename`) in `backend/apps/notes/models.py` per plan: data-model MediaFile / FR-036 (missing)
 - [ ] T105 Apply `RATELIMIT_SUGGESTION_RATE` via `@ratelimit` to suggestion-submission endpoints in `backend/apps/suggestions/views.py` per FR-052 (partial)
-- [ ] T106 Create `backend/.env.example` and `frontend/.env.local.example` referenced by quickstart.md setup steps per plan: quickstart.md (missing)
+- [X] T106 Create `backend/.env.example` and `frontend/.env.local.example` referenced by quickstart.md setup steps per plan: quickstart.md (missing)
 
 ---
 
