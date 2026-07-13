@@ -135,17 +135,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T046 [P] [US4] Contract test `POST /notes/{id}/suggestions/change/` in `backend/tests/contract/test_suggestions_change.py`
-- [ ] T047 [P] [US4] Contract test `POST /suggestions/bulk-change/` in `backend/tests/contract/test_suggestions_bulk.py`
+- [X] T046 [P] [US4] Contract test `POST /notes/{id}/suggestions/change/` in `backend/tests/contract/test_suggestions_change.py`
+- [X] T047 [P] [US4] Contract test `POST /suggestions/bulk-change/` in `backend/tests/contract/test_suggestions_bulk.py`
 
 ### Implementation for User Story 4
 
-- [ ] T048 [US4] Create Suggestion, SuggestionTargetNote models in `backend/apps/suggestions/models.py`
-- [ ] T049 [US4] Apply `nh3` sanitization to `proposed_field_values` in `backend/apps/suggestions/serializers.py`
-- [ ] T050 [US4] Implement change-suggestion and bulk-change endpoints in `backend/apps/suggestions/views.py`
-- [ ] T051 [P] [US4] Build Tiptap rich-text editor with raw-HTML toggle in `frontend/src/components/RichTextEditor.tsx`
-- [ ] T052 [P] [US4] Build suggest-change form with side-by-side diff viewer in `frontend/src/app/decks/[id]/notes/[noteId]/suggest/page.tsx`
-- [ ] T053 [P] [US4] Build bulk-suggestion note-selection UI in `frontend/src/app/decks/[id]/suggest-bulk/page.tsx`
+- [X] T048 [US4] Create Suggestion, SuggestionTargetNote models in `backend/apps/suggestions/models.py`
+- [X] T049 [US4] Apply `nh3` sanitization to `proposed_field_values` in `backend/apps/suggestions/serializers.py`
+- [X] T050 [US4] Implement change-suggestion and bulk-change endpoints in `backend/apps/suggestions/views.py`
+- [X] T051 [P] [US4] Build Tiptap rich-text editor with raw-HTML toggle in `frontend/src/components/RichTextEditor.tsx`
+- [X] T052 [P] [US4] Build suggest-change form with side-by-side diff viewer in `frontend/src/app/decks/[id]/notes/[noteId]/suggest/page.tsx`
+- [X] T053 [P] [US4] Build bulk-suggestion note-selection UI in `frontend/src/app/decks/[id]/suggest-bulk/page.tsx`
 
 **Checkpoint**: US4 funciona isoladamente sobre US1-US3
 
@@ -401,7 +401,7 @@ Com múltiplos desenvolvedores, após Foundational:
 
 **Purpose**: Lacunas entre spec/plan/tasks e o código atual, detectadas por /speckit-converge em 2026-07-13 — depois da constituição v1.1.0 (Princípios VI/VII) e das atualizações de spec.md (FR-011, FR-055, SC-009) e plan.md (Tailwind/shadcn, research.md #13/#14); T017–T106 seguem válidas e não são duplicadas aqui
 
-- [ ] T107 Generate `frontend/design-system/MASTER.md` (palette, typography, tokens, base components, loading/empty/error states, global navigation — header, authenticated/anonymous menu, catálogo→deck→notas→sugestões flow) via `ui-ux-pro-max:design-system`, freely deciding palette/typography/light-dark strategy from the project's own analysis (no prescribed choice); MUST also resolve the currently-unreachable `.dark` tokens in `frontend/src/app/globals.css` (either wire a theme toggle or drop the unused dark tokens) before starting US4/US5 screen tasks (T051-T053, T064-T065) per plan: Constitution Check VII (missing)
+- [X] T107 Generate `frontend/design-system/MASTER.md` (palette, typography, tokens, base components, loading/empty/error states, global navigation — header, authenticated/anonymous menu, catálogo→deck→notas→sugestões flow) via `ui-ux-pro-max:design-system`, freely deciding palette/typography/light-dark strategy from the project's own analysis (no prescribed choice); MUST also resolve the currently-unreachable `.dark` tokens in `frontend/src/app/globals.css` (either wire a theme toggle or drop the unused dark tokens) before starting US4/US5 screen tasks (T051-T053, T064-T065) per plan: Constitution Check VII (missing)
 - [ ] T108 Run an accessibility audit (labels, AA contrast, keyboard operability per FR-055/SC-009) across implemented MVP screens (`frontend/src/app/(auth)/`, `account/`, `decks/`) via `/impeccable audit`, fixing findings before new screens are added in `frontend/src/` (missing)
 - [ ] T109 [P] Retrofit `frontend/src/app/(auth)/login,register,password-reset/page.tsx`, `account/page.tsx`, `decks/page.tsx`, `decks/[id]/page.tsx` from legacy `.form-page`/`.deck-list` CSS Modules classes onto Tailwind CSS 4 + shadcn/ui components, per Constitution Principle VII / research.md #14 (partial)
 - [ ] T110 Confirm all UI copy, labels, and error messages across implemented screens (`frontend/src/app/`) are in pt-BR per FR-056 (missing)

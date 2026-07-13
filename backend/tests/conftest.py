@@ -46,3 +46,29 @@ def make_deck(note_type):
         return Deck.objects.create(note_type=note_type, **kwargs)
 
     return _make
+
+
+@pytest.fixture
+def make_note(make_deck):
+    from django.utils import timezone
+
+    from apps.notes.models import Note
+
+    def _make(deck=None, **kwargs):
+        deck = deck or make_deck()
+        kwargs.setdefault("guid", uuid.uuid4().hex)
+        kwargs.setdefault("field_values", {"Frente": "Pergunta", "Verso": "Resposta"})
+        kwargs.setdefault("mod", timezone.now())
+        return Note.objects.create(deck=deck, note_type=deck.note_type, **kwargs)
+
+    return _make
+
+
+@pytest.fixture
+def subscribe(user):
+    from apps.catalog.models import Subscription
+
+    def _subscribe(deck):
+        return Subscription.objects.get_or_create(user=user, deck=deck)[0]
+
+    return _subscribe

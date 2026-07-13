@@ -6,4 +6,5 @@ urlpatterns = [
     path("api/v1/accounts/", include("apps.accounts.urls")),
     path("api/v1/decks/", include("apps.catalog.urls")),
     path("api/v1/", include("apps.sync.urls")),
+    path("api/v1/", include("apps.suggestions.urls")),
 ]
