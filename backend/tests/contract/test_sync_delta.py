@@ -77,6 +77,10 @@ def test_delta_flags_full_resync_on_structural_change(auth_client, subscribed_de
 
     assert body["full_resync_required"] is True  # FR-035
     assert body["notes"] == []
+    assert (
+        auth_client.get(f"/api/v1/decks/{subscribed_deck.id}/sync/full/").status_code
+        == 200
+    )  # cliente anterior ainda consegue concluir o fallback uma vez
 
 
 def test_delta_is_rate_limited_to_one_per_10s(auth_client, subscribed_deck):
@@ -86,6 +90,27 @@ def test_delta_is_rate_limited_to_one_per_10s(auth_client, subscribed_deck):
 
     assert response.status_code == 429  # FR-032
     assert response.headers["Retry-After"] == "10"
+
+
+def test_sync_run_covers_multiple_decks_and_full_fallback(
+    auth_client, subscribed_deck, make_deck, user
+):
+    second_deck = make_deck(name="Outro Deck")
+    Subscription.objects.create(user=user, deck=second_deck)
+    auth_client.credentials(HTTP_X_SYNC_RUN_ID="run-1")
+
+    assert auth_client.get(_url(subscribed_deck)).status_code == 200
+    assert auth_client.get(_url(second_deck)).status_code == 200
+    assert (
+        auth_client.get(f"/api/v1/decks/{subscribed_deck.id}/sync/full/").status_code
+        == 200
+    )
+
+    auth_client.credentials(HTTP_X_SYNC_RUN_ID="run-2")
+    assert (
+        auth_client.get(f"/api/v1/decks/{subscribed_deck.id}/sync/full/").status_code
+        == 429
+    )
 
 
 def test_delta_requires_subscription(auth_client, make_deck):

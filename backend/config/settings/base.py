@@ -103,8 +103,9 @@ REST_FRAMEWORK = {
 
 # --- django-ratelimit: rates compartilhados, usados via @ratelimit(rate=settings.X) nas views ---
 RATELIMIT_ENABLE = True
+RATELIMIT_SYNC_WINDOW_SECONDS = 10
 RATELIMIT_SYNC_RATE = (
-    "1/10s"  # FR-032: intervalo mínimo de 10s entre syncs do mesmo usuário
+    f"1/{RATELIMIT_SYNC_WINDOW_SECONDS}s"  # FR-032: uma execução por usuário
 )
 RATELIMIT_SUGGESTION_RATE = "20/m"  # FR-052
 

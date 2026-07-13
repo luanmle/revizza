@@ -20,6 +20,7 @@ class AnkiHubBrClient:
         api_base_url: str,
         token: str | None = None,
         anki_version: str | None = None,
+        sync_run_id: str | None = None,
     ):
         parsed_url = urlsplit(api_base_url)
         if parsed_url.scheme != "https" or not parsed_url.netloc:
@@ -39,6 +40,8 @@ class AnkiHubBrClient:
         if anki_version:
             # telemetria/diagnóstico da política LTS (FR-038, contracts/sync.md)
             self.session.headers["X-Anki-Version"] = anki_version
+        if sync_run_id:
+            self.session.headers["X-Sync-Run-ID"] = sync_run_id
 
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
         if self.token:

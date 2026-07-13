@@ -8,3 +8,9 @@ def test_client_rejects_non_https_base_url():
         assert str(exc) == "A URL da API deve usar HTTPS."
     else:
         raise AssertionError("HTTP API URL was accepted")
+
+
+def test_client_sends_sync_run_id():
+    client = AnkiHubBrClient("https://api.example.com", sync_run_id="run-1")
+
+    assert client.session.headers["X-Sync-Run-ID"] == "run-1"

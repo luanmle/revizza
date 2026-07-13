@@ -10,6 +10,7 @@ importam o pacote sem um Anki gráfico rodando.
 """
 
 from pathlib import Path
+from uuid import uuid4
 
 from ..ankihub_br_client import AnkiHubBrClient
 from ..db import models as state_db
@@ -96,24 +97,24 @@ def sync_all(trigger: str) -> None:
         return
 
     sync.mark_sync_started()
-    client = AnkiHubBrClient(
-        config["api_base_url"], token=token, anki_version=compat.anki_version()
-    )
-    synced = 0
     try:
+        client = AnkiHubBrClient(
+            config["api_base_url"],
+            token=token,
+            anki_version=compat.anki_version(),
+            sync_run_id=uuid4().hex,
+        )
+        deck_options = []
         for deck in client.get_subscribed_decks():
             prefs = deck.get("subscription", {})
             if trigger != "manual" and not prefs.get(f"sync_trigger_{trigger}", False):
                 continue
             if trigger == "manual" and not prefs.get("sync_trigger_manual", True):
                 continue
-            sync.perform_sync(
-                mw.col,
-                client,
-                deck["id"],
-                delete_notes_on_removal=prefs.get("delete_notes_on_removal", False),
+            deck_options.append(
+                (deck["id"], prefs.get("delete_notes_on_removal", False))
             )
-            synced += 1
+        synced = len(sync.sync_decks(mw.col, client, deck_options))
     except Exception as exc:
         report_exception(exc)
         showWarning(
@@ -121,5 +122,7 @@ def sync_all(trigger: str) -> None:
             f"Tente novamente. Detalhe: {exc}"
         )
         return
+    finally:
+        sync.mark_sync_finished()
     if synced or trigger == "manual":
         tooltip(f"AnkiHub Brasil: {synced} deck(s) sincronizado(s).")

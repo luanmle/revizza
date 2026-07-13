@@ -1,6 +1,7 @@
 """API de sincronização consumida exclusivamente pelo add-on (contracts/sync.md)."""
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -15,6 +16,32 @@ from apps.notes.models import MediaFile, Note, NoteType
 from apps.notes.sanitize import sanitize_field_values
 
 from . import media
+
+
+def _legacy_full_fallback_key(request, deck_id) -> str:
+    return f"ankihub-sync-full-fallback:{request.user.auth_id}:{deck_id}"
+
+
+def _sync_run_is_limited(request, deck_id, *, allow_legacy_fallback=False) -> bool:
+    """Permite delta/full do mesmo run e bloqueia outro run por 10s."""
+    run_id = request.headers.get("X-Sync-Run-ID")
+    if not run_id:  # compatibilidade com clientes anteriores
+        fallback_key = _legacy_full_fallback_key(request, deck_id)
+        if allow_legacy_fallback and cache.get(fallback_key):
+            cache.delete(fallback_key)
+            return False
+        return is_ratelimited(
+            request=request,
+            group="sync",
+            key="user",
+            rate=settings.RATELIMIT_SYNC_RATE,
+            increment=True,
+        )
+
+    key = f"ankihub-sync-run:{request.user.auth_id}"
+    if cache.add(key, run_id, timeout=settings.RATELIMIT_SYNC_WINDOW_SECONDS):
+        return False
+    return cache.get(key) != run_id
 
 
 def _note_type_payload(note_type: NoteType) -> dict:
@@ -58,14 +85,9 @@ def _deck_payload(deck: Deck, notes) -> dict:
 
 
 class _SubscriberSyncView(APIView):
-    """Base delta/full: exige assinatura e aplica o rate limit de 10s (FR-032).
+    """Base delta/full: assinatura + uma execução por usuário a cada 10s."""
 
-    O grupo de rate limit é por endpoint (delta e full separados): o fallback
-    delta→full_resync_required→full precisa das duas chamadas em sequência;
-    duas tentativas de *sincronizar* (dois deltas) continuam bloqueadas.
-    """
-
-    rate_group = ""
+    allow_legacy_fallback = False
 
     def get(self, request, deck_id):
         deck = get_object_or_404(Deck, pk=deck_id)
@@ -74,12 +96,8 @@ class _SubscriberSyncView(APIView):
                 {"detail": "Assine o deck para sincronizar."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if is_ratelimited(
-            request=request,
-            group=self.rate_group,
-            key="user",
-            rate=settings.RATELIMIT_SYNC_RATE,
-            increment=True,
+        if _sync_run_is_limited(
+            request, deck_id, allow_legacy_fallback=self.allow_legacy_fallback
         ):
             return Response(
                 {"detail": "Aguarde 10 segundos entre sincronizações."},
@@ -91,8 +109,6 @@ class _SubscriberSyncView(APIView):
 
 class DeltaView(_SubscriberSyncView):
     """GET /decks/{id}/sync/delta/?since_mod= (FR-031, FR-034, FR-035)."""
-
-    rate_group = "sync-delta"
 
     def sync(self, request, deck):
         since = None
@@ -110,6 +126,12 @@ class DeltaView(_SubscriberSyncView):
         structure_changed_at = deck.note_type.structure_changed_at
         if since and structure_changed_at and structure_changed_at > since:
             # FR-035: mudança estrutural não reconciliável via delta parcial
+            if not request.headers.get("X-Sync-Run-ID"):
+                cache.set(
+                    _legacy_full_fallback_key(request, deck.id),
+                    True,
+                    timeout=settings.RATELIMIT_SYNC_WINDOW_SECONDS,
+                )
             return Response(
                 {
                     "deck_id": str(deck.id),
@@ -133,7 +155,7 @@ class DeltaView(_SubscriberSyncView):
 class FullView(_SubscriberSyncView):
     """GET /decks/{id}/sync/full/ — deck completo para ressincronização (FR-035)."""
 
-    rate_group = "sync-full"
+    allow_legacy_fallback = True
 
     def sync(self, request, deck):
         return Response(_deck_payload(deck, deck.notes.filter(deleted_at__isnull=True)))

@@ -15,6 +15,7 @@ MIN_SYNC_INTERVAL_SECONDS = 10  # FR-032 (guarda local; o backend também respon
 REMOVED_TAG = "AnkiHubBR_Removida"  # FR-037: marcar preservando o histórico local
 
 _last_sync_started_at = float("-inf")
+_sync_in_progress = False
 
 
 class FullResyncRequired(Exception):
@@ -23,12 +24,20 @@ class FullResyncRequired(Exception):
 
 def can_sync_now() -> bool:
     """Guarda de 10s por *execução* de sync (todas as assinaturas de uma vez)."""
-    return time.monotonic() - _last_sync_started_at >= MIN_SYNC_INTERVAL_SECONDS
+    return not _sync_in_progress and (
+        time.monotonic() - _last_sync_started_at >= MIN_SYNC_INTERVAL_SECONDS
+    )
 
 
 def mark_sync_started() -> None:
-    global _last_sync_started_at
+    global _last_sync_started_at, _sync_in_progress
     _last_sync_started_at = time.monotonic()
+    _sync_in_progress = True
+
+
+def mark_sync_finished() -> None:
+    global _sync_in_progress
+    _sync_in_progress = False
 
 
 def _note_id_by_guid(col, guid: str):
@@ -202,31 +211,41 @@ def apply_full(col, payload: dict, *, delete_notes_on_removal: bool = False) -> 
 def perform_sync(
     col, client, deck_id: str, *, delete_notes_on_removal: bool = False
 ) -> dict:
-    """Sincroniza um deck: backup → delta (ou full) → mídia → cache de estado.
-
-    Qualquer falha reverte a coleção para o backup pré-sync e propaga a
-    exceção — nova tentativa é sempre completa, sem retomada parcial (FR-039).
-    """
+    """Aplica delta (ou full) e mídia de um deck dentro do run atual."""
     since_mod = state.last_synced_mod(deck_id)
-    backup_path = backup_mod.create_backup(col)  # FR-033
-    try:
-        payload = client.get_deck_delta(deck_id, since_mod)
-        if payload.get("full_resync_required"):
+    payload = client.get_deck_delta(deck_id, since_mod)
+    if payload.get("full_resync_required"):
+        payload = client.get_deck_full(deck_id)
+        apply_full(col, payload, delete_notes_on_removal=delete_notes_on_removal)
+    else:
+        try:
+            apply_delta(col, payload, delete_notes_on_removal=delete_notes_on_removal)
+        except FullResyncRequired:
             payload = client.get_deck_full(deck_id)
             apply_full(col, payload, delete_notes_on_removal=delete_notes_on_removal)
-        else:
-            try:
-                apply_delta(
-                    col, payload, delete_notes_on_removal=delete_notes_on_removal
-                )
-            except FullResyncRequired:
-                payload = client.get_deck_full(deck_id)
-                apply_full(
-                    col, payload, delete_notes_on_removal=delete_notes_on_removal
-                )
-        media_mod.sync_media(col, payload.get("media", []), client)
-        state.record_synced_notes(deck_id, payload["notes"])
+    media_mod.sync_media(col, payload.get("media", []), client)
+    return payload
+
+
+def sync_decks(col, client, deck_options: list[tuple[str, bool]]) -> list[dict]:
+    """Sincroniza todos decks sob um backup e uma transação de estado."""
+    if not deck_options:
+        return []
+    backup_path = backup_mod.create_backup(col)  # FR-033: um snapshot por run
+    results = []
+    try:
+        for deck_id, delete_notes_on_removal in deck_options:
+            payload = perform_sync(
+                col,
+                client,
+                deck_id,
+                delete_notes_on_removal=delete_notes_on_removal,
+            )
+            results.append((deck_id, payload))
+        with state.database.atomic():
+            for deck_id, payload in results:
+                state.record_synced_notes(deck_id, payload["notes"])
     except Exception:
         backup_mod.restore_backup(col, backup_path)  # FR-039
         raise
-    return payload
+    return [payload for _, payload in results]
