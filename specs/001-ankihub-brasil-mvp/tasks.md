@@ -413,7 +413,7 @@ Com múltiplos desenvolvedores, após Foundational:
 **Purpose**: Lacunas adicionais entre spec/plan/constituição e o código atual, sem duplicar o trabalho já rastreado em T069–T110
 
 - [X] T111 [CRITICAL] Resolve the conflict between the add-on-originated `PublishView`/`T102` flow and strictly unidirectional web→Anki sync before implementing T102; remove/supersede that flow unless an explicit governance amendment authorizes initial import per Constitution II / plan: unidirectional sync (contradicts)
-- [ ] T112 [CRITICAL] Reject non-HTTPS API base URLs in `addon/ankihub_br/ankihub_br_client/client.py` and add a focused client test per Constitution IV (contradicts)
+- [X] T112 [CRITICAL] Reject non-HTTPS API base URLs in `addon/ankihub_br/ankihub_br_client/client.py` and add a focused client test per Constitution IV (contradicts)
 - [ ] T113 Refactor sync orchestration so one user run covers all subscribed decks under one concurrency/10-second boundary without self-rate-limiting later decks or letting delta/full groups bypass the lock per FR-032 (partial)
 - [ ] T114 Move backup/rollback to the whole multi-deck `sync_all` run and add one later-deck-failure check proving earlier deck changes are reverted per FR-039 / US3/AC10 (partial)
 - [ ] T115 Add the minimal add-on preferences UI for automatic-on-open, chained-native, manual sync, and delete-vs-mark removal settings, persisting them through the existing subscription PATCH endpoint per US3/AC2, US3/AC3, FR-037 (missing)

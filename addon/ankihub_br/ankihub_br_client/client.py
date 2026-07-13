@@ -4,6 +4,8 @@ Auth via Bearer token do Supabase, retry/backoff automático em 429/5xx (respeit
 Retry-After — FR-032) e versionamento de contrato via header Accept.
 """
 
+from urllib.parse import urlsplit
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -19,6 +21,9 @@ class AnkiHubBrClient:
         token: str | None = None,
         anki_version: str | None = None,
     ):
+        parsed_url = urlsplit(api_base_url)
+        if parsed_url.scheme != "https" or not parsed_url.netloc:
+            raise ValueError("A URL da API deve usar HTTPS.")
         self.api_base_url = api_base_url.rstrip("/")
         self.token = token
         self.session = requests.Session()
@@ -30,7 +35,6 @@ class AnkiHubBrClient:
             respect_retry_after_header=True,
         )
         self.session.mount("https://", HTTPAdapter(max_retries=retry))
-        self.session.mount("http://", HTTPAdapter(max_retries=retry))
         self.session.headers["Accept"] = f"application/json; version={API_VERSION}"
         if anki_version:
             # telemetria/diagnóstico da política LTS (FR-038, contracts/sync.md)
