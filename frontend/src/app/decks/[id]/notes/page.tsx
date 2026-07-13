@@ -30,7 +30,8 @@ interface DeckDetail {
   name: string;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function nextPath(next: string | null): string | null {
   if (!next) return null;
@@ -64,7 +65,9 @@ function NoteResult({ note, deckId }: { note: NoteListItem; deckId: string }) {
         <p>{snippet(note.field_values) || "(nota sem conteúdo textual)"}</p>
         <p className="font-mono text-sm text-muted-foreground">{note.id}</p>
         {note.tags.length > 0 && (
-          <p className="text-sm text-muted-foreground">{note.tags.join(", ")}</p>
+          <p className="text-sm text-muted-foreground">
+            {note.tags.join(", ")}
+          </p>
         )}
         <div className="flex flex-wrap gap-2">
           <Button
@@ -73,7 +76,7 @@ function NoteResult({ note, deckId }: { note: NoteListItem; deckId: string }) {
             onClick={() => setPreviewOpen((open) => !open)}
             aria-expanded={previewOpen}
           >
-            {previewOpen ? "Ocultar preview" : "Visualizar"}
+            {previewOpen ? "Ocultar prévia" : "Visualizar"}
           </Button>
           <Button
             size="sm"
@@ -106,7 +109,10 @@ function NoteResult({ note, deckId }: { note: NoteListItem; deckId: string }) {
         </div>
         {previewOpen && isPending && <Skeleton className="h-64 w-full" />}
         {previewOpen && detail && (
-          <NotePreview noteType={detail.note_type} fieldValues={detail.field_values} />
+          <NotePreview
+            noteType={detail.note_type}
+            fieldValues={detail.field_values}
+          />
         )}
         {discussionOpen && <CommentThread noteId={note.id} />}
       </CardContent>
@@ -156,7 +162,10 @@ export default function NotesSearchPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-6">
-      <nav aria-label="Trilha de navegação" className="mb-4 text-sm text-muted-foreground">
+      <nav
+        aria-label="Trilha de navegação"
+        className="mb-4 text-sm text-muted-foreground"
+      >
         <Link href="/decks" className="hover:text-foreground">
           Catálogo
         </Link>{" "}
@@ -167,7 +176,9 @@ export default function NotesSearchPage() {
         / <span className="text-foreground">Notas</span>
       </nav>
 
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Notas do deck</h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight">
+        Notas do deck
+      </h1>
 
       <form
         className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end"

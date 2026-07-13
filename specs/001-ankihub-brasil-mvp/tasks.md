@@ -402,9 +402,9 @@ Com múltiplos desenvolvedores, após Foundational:
 **Purpose**: Lacunas entre spec/plan/tasks e o código atual, detectadas por /speckit-converge em 2026-07-13 — depois da constituição v1.1.0 (Princípios VI/VII) e das atualizações de spec.md (FR-011, FR-055, SC-009) e plan.md (Tailwind/shadcn, research.md #13/#14); T017–T106 seguem válidas e não são duplicadas aqui
 
 - [X] T107 Generate `frontend/design-system/MASTER.md` (palette, typography, tokens, base components, loading/empty/error states, global navigation — header, authenticated/anonymous menu, catálogo→deck→notas→sugestões flow) via `ui-ux-pro-max:design-system`, freely deciding palette/typography/light-dark strategy from the project's own analysis (no prescribed choice); MUST also resolve the currently-unreachable `.dark` tokens in `frontend/src/app/globals.css` (either wire a theme toggle or drop the unused dark tokens) before starting US4/US5 screen tasks (T051-T053, T064-T065) per plan: Constitution Check VII (missing)
-- [ ] T108 Run an accessibility audit (labels, AA contrast, keyboard operability per FR-055/SC-009) across implemented MVP screens (`frontend/src/app/(auth)/`, `account/`, `decks/`) via `/impeccable audit`, fixing findings before new screens are added in `frontend/src/` (missing)
-- [ ] T109 [P] Retrofit `frontend/src/app/(auth)/login,register,password-reset/page.tsx`, `account/page.tsx`, `decks/page.tsx`, `decks/[id]/page.tsx` from legacy `.form-page`/`.deck-list` CSS Modules classes onto Tailwind CSS 4 + shadcn/ui components, per Constitution Principle VII / research.md #14 (partial)
-- [ ] T110 Confirm all UI copy, labels, and error messages across implemented screens (`frontend/src/app/`) are in pt-BR per FR-056 (missing)
+- [X] T108 Run an accessibility audit (labels, AA contrast, keyboard operability per FR-055/SC-009) across implemented MVP screens (`frontend/src/app/(auth)/`, `account/`, `decks/`) via `/impeccable audit`, fixing findings before new screens are added in `frontend/src/` (missing)
+- [X] T109 [P] Retrofit `frontend/src/app/(auth)/login,register,password-reset/page.tsx`, `account/page.tsx`, `decks/page.tsx`, `decks/[id]/page.tsx` from legacy `.form-page`/`.deck-list` CSS Modules classes onto Tailwind CSS 4 + shadcn/ui components, per Constitution Principle VII / research.md #14 (partial)
+- [X] T110 Confirm all UI copy, labels, and error messages across implemented screens (`frontend/src/app/`) are in pt-BR per FR-056 (missing)
 
 ---
 

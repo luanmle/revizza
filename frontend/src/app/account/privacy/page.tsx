@@ -72,6 +72,26 @@ export default function AccountPrivacyPage() {
     );
   }
 
+  if (me.isError) {
+    return (
+      <main className="mx-auto max-w-2xl p-4 md:p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Não foi possível carregar sua privacidade</AlertTitle>
+          <AlertDescription>
+            Tente novamente em instantes.
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => me.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </main>
+    );
+  }
+
   const mutationError =
     consent.isError ||
     exportData.isError ||
@@ -94,7 +114,8 @@ export default function AccountPrivacyPage() {
         Privacidade e dados
       </h1>
       <p className="mb-8 max-w-[70ch] text-sm text-muted-foreground">
-        Controle seus consentimentos, baixe seus dados e solicite a exclusão da conta.
+        Controle seus consentimentos, baixe seus dados e solicite a exclusão da
+        conta.
       </p>
 
       {me.isPending && (
@@ -114,18 +135,28 @@ export default function AccountPrivacyPage() {
               Alterações têm efeito imediato.
             </p>
             <div className="flex flex-col gap-2">
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3">
+              <label
+                htmlFor="privacy-marketing-consent"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3"
+              >
                 <Checkbox
+                  id="privacy-marketing-consent"
                   checked={me.data.consent_marketing_emails}
                   disabled={consent.isPending}
                   onCheckedChange={(checked) =>
-                    consent.mutate({ consent_marketing_emails: checked === true })
+                    consent.mutate({
+                      consent_marketing_emails: checked === true,
+                    })
                   }
                 />
                 <span className="text-sm">Receber e-mails de novidades</span>
               </label>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3">
+              <label
+                htmlFor="privacy-research-consent"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3"
+              >
                 <Checkbox
+                  id="privacy-research-consent"
                   checked={me.data.consent_research_data}
                   disabled={consent.isPending}
                   onCheckedChange={(checked) =>
@@ -167,8 +198,8 @@ export default function AccountPrivacyPage() {
                 <AlertTitle>Exclusão agendada</AlertTitle>
                 <AlertDescription>
                   Sua conta será excluída em{" "}
-                  {scheduledDate(me.data.deletion_requested_at)}. Você pode cancelar
-                  durante a carência.
+                  {scheduledDate(me.data.deletion_requested_at)}. Você pode
+                  cancelar durante a carência.
                   <Button
                     variant="outline"
                     className="mt-4 min-h-11"
@@ -176,15 +207,17 @@ export default function AccountPrivacyPage() {
                     onClick={() => cancelDeletion.mutate()}
                   >
                     <RotateCcw aria-hidden />
-                    {cancelDeletion.isPending ? "Cancelando…" : "Cancelar exclusão"}
+                    {cancelDeletion.isPending
+                      ? "Cancelando…"
+                      : "Cancelar exclusão"}
                   </Button>
                 </AlertDescription>
               </Alert>
             ) : (
               <>
                 <p className="mb-4 max-w-[70ch] text-sm text-muted-foreground">
-                  A exclusão é agendada com carência de 7 dias. Depois desse prazo, seu
-                  perfil e conteúdo autoral serão removidos.
+                  A exclusão é agendada com carência de 7 dias. Depois desse
+                  prazo, seu perfil e conteúdo autoral serão removidos.
                 </p>
                 <Button
                   variant="destructive"

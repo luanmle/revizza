@@ -80,10 +80,16 @@ const SUBMISSIONS = [
   { value: "bulk", label: "Em lote" },
 ];
 
-const STATUS_BADGE: Record<Suggestion["status"], { className: string; label: string }> = {
+const STATUS_BADGE: Record<
+  Suggestion["status"],
+  { className: string; label: string }
+> = {
   pending: { className: "bg-warning/15 text-warning", label: "Pendente" },
   accepted: { className: "bg-success/15 text-success", label: "Aceita" },
-  rejected: { className: "bg-destructive/15 text-destructive", label: "Rejeitada" },
+  rejected: {
+    className: "bg-destructive/15 text-destructive",
+    label: "Rejeitada",
+  },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -112,12 +118,14 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
   // ponytail: só a primeira página da thread; paginar quando threads longas existirem
   const { data, isPending } = useQuery({
     queryKey,
-    queryFn: () => api.get<Paginated<Comment>>(`/suggestions/${suggestionId}/comments/`),
+    queryFn: () =>
+      api.get<Paginated<Comment>>(`/suggestions/${suggestionId}/comments/`),
   });
 
   const [body, setBody] = useState("");
   const post = useMutation({
-    mutationFn: () => api.post(`/suggestions/${suggestionId}/comments/`, { body }),
+    mutationFn: () =>
+      api.post(`/suggestions/${suggestionId}/comments/`, { body }),
     onSuccess: () => {
       setBody("");
       queryClient.invalidateQueries({ queryKey });
@@ -128,7 +136,9 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
     <div className="flex flex-col gap-3 border-t pt-3">
       {isPending && <Skeleton className="h-12 w-full" />}
       {data?.results.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nenhum comentário ainda.</p>
+        <p className="text-sm text-muted-foreground">
+          Nenhum comentário ainda.
+        </p>
       )}
       {data?.results.map((comment) => (
         <div key={comment.id} className="text-sm">
@@ -136,8 +146,7 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
             <span className="font-mono">
               {comment.author?.slice(0, 8) ?? "removido"}
             </span>{" "}
-            ·{" "}
-            {formatDate(comment.created_at)}
+            · {formatDate(comment.created_at)}
           </p>
           <p>{comment.body}</p>
           <ReportButton commentId={comment.id} suggestionThread />
@@ -164,7 +173,12 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
             Não foi possível enviar o comentário.
           </p>
         )}
-        <Button type="submit" size="sm" className="self-start" disabled={post.isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          className="self-start"
+          disabled={post.isPending}
+        >
           {post.isPending ? "Enviando…" : "Comentar"}
         </Button>
       </form>
@@ -196,10 +210,13 @@ function SuggestionCard({
     <Card>
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className={`rounded-full ${status.className}`}>{status.label}</Badge>
+          <Badge className={`rounded-full ${status.className}`}>
+            {status.label}
+          </Badge>
           {suggestion.change_category && (
             <Badge variant="secondary" className="rounded-full">
-              {CATEGORY_LABELS[suggestion.change_category] ?? suggestion.change_category}
+              {CATEGORY_LABELS[suggestion.change_category] ??
+                suggestion.change_category}
             </Badge>
           )}
           {suggestion.note_ids.length > 1 && (
@@ -211,8 +228,7 @@ function SuggestionCard({
             <span className="font-mono">
               {suggestion.author?.slice(0, 8) ?? "removido"}
             </span>{" "}
-            ·{" "}
-            {formatDate(suggestion.created_at)}
+            · {formatDate(suggestion.created_at)}
           </span>
         </div>
 
@@ -221,7 +237,8 @@ function SuggestionCard({
         {proposedFields.length > 0 && (
           <details className="rounded-lg border bg-muted/30 p-3">
             <summary className="cursor-pointer text-sm font-medium">
-              Campos propostos ({proposedFields.map(([field]) => field).join(", ")})
+              Campos propostos (
+              {proposedFields.map(([field]) => field).join(", ")})
             </summary>
             <div className="mt-2 flex flex-col gap-2">
               {proposedFields.map(([field, html]) => (
@@ -345,7 +362,10 @@ export default function CommunitySuggestionsPage() {
   const refetchSuggestions = () =>
     queryClient.invalidateQueries({ queryKey: ["suggestions", id] });
 
-  if (suggestions.error instanceof ApiError && suggestions.error.status === 401) {
+  if (
+    suggestions.error instanceof ApiError &&
+    suggestions.error.status === 401
+  ) {
     return (
       <main className="mx-auto max-w-3xl p-4 md:p-6">
         <p>
@@ -362,7 +382,10 @@ export default function CommunitySuggestionsPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-6">
-      <nav aria-label="Trilha de navegação" className="mb-4 text-sm text-muted-foreground">
+      <nav
+        aria-label="Trilha de navegação"
+        className="mb-4 text-sm text-muted-foreground"
+      >
         <Link href="/decks" className="hover:text-foreground">
           Catálogo
         </Link>{" "}
@@ -374,7 +397,7 @@ export default function CommunitySuggestionsPage() {
       </nav>
 
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">
-        Community Suggestions
+        Sugestões da comunidade
       </h1>
 
       <Tabs value={tab} onValueChange={(value) => setTab(String(value))}>
@@ -391,7 +414,10 @@ export default function CommunitySuggestionsPage() {
         className="my-4 grid grid-cols-1 gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
-          setSearch({ author: authorInput.trim(), note_id: noteIdInput.trim() });
+          setSearch({
+            author: authorInput.trim(),
+            note_id: noteIdInput.trim(),
+          });
         }}
       >
         <div className="flex flex-col gap-1">

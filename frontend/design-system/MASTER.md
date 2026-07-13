@@ -26,28 +26,28 @@ neutras e calmas, uma única cor de marca confiante, vocabulário de status fort
 
 ### Primitivos (Tailwind 4, oklch)
 
-| Primitivo | Valor | Uso |
-|---|---|---|
-| `neutral-*` | escala padrão Tailwind | superfícies, texto, bordas (já em `globals.css`) |
-| `emerald-400` | `oklch(0.765 0.177 163.223)` | primary dark-mode, accepted dark-mode |
-| `emerald-600` | `oklch(0.596 0.145 163.225)` | success/accepted light-mode |
-| `emerald-700` | `oklch(0.508 0.118 165.612)` | **primary light-mode** (4.5:1+ sobre branco) |
-| `emerald-950` | `oklch(0.262 0.051 172.552)` | foreground sobre primary dark-mode |
-| `amber-300` | `oklch(0.879 0.169 91.605)` | warning/pending dark-mode |
-| `amber-700` | `oklch(0.555 0.163 48.998)` | warning/pending light-mode |
-| vermelho | tokens `--destructive` existentes | rejected, erros, exclusão |
+| Primitivo     | Valor                             | Uso                                              |
+| ------------- | --------------------------------- | ------------------------------------------------ |
+| `neutral-*`   | escala padrão Tailwind            | superfícies, texto, bordas (já em `globals.css`) |
+| `emerald-400` | `oklch(0.765 0.177 163.223)`      | primary dark-mode, accepted dark-mode            |
+| `emerald-600` | `oklch(0.596 0.145 163.225)`      | success/accepted light-mode                      |
+| `emerald-700` | `oklch(0.508 0.118 165.612)`      | **primary light-mode** (4.5:1+ sobre branco)     |
+| `emerald-950` | `oklch(0.262 0.051 172.552)`      | foreground sobre primary dark-mode               |
+| `amber-300`   | `oklch(0.879 0.169 91.605)`       | warning/pending dark-mode                        |
+| `amber-700`   | `oklch(0.555 0.163 48.998)`       | warning/pending light-mode                       |
+| vermelho      | tokens `--destructive` existentes | rejected, erros, exclusão                        |
 
 ### Semânticos (definidos em `src/app/globals.css`)
 
-| Token | Light | Dark | Propósito |
-|---|---|---|---|
-| `--primary` | emerald-700 | emerald-400 | ações principais, links ativos, foco |
-| `--primary-foreground` | branco | emerald-950 | texto sobre primary |
-| `--success` | emerald-600 | emerald-400 | sugestão aceita, confirmações |
-| `--warning` | amber-700 | amber-300 | sugestão pendente, avisos |
-| `--destructive` | (existente) | (existente) | sugestão rejeitada, erros, exclusão |
-| `--ring` | emerald-600 | emerald-400 | anel de foco visível (teclado) |
-| demais (`--background`, `--card`, `--muted`…) | neutros shadcn existentes | idem | superfícies |
+| Token                                         | Light                     | Dark        | Propósito                            |
+| --------------------------------------------- | ------------------------- | ----------- | ------------------------------------ |
+| `--primary`                                   | emerald-700               | emerald-400 | ações principais, links ativos, foco |
+| `--primary-foreground`                        | branco                    | emerald-950 | texto sobre primary                  |
+| `--success`                                   | emerald-600               | emerald-400 | sugestão aceita, confirmações        |
+| `--warning`                                   | amber-700                 | amber-300   | sugestão pendente, avisos            |
+| `--destructive`                               | (existente)               | (existente) | sugestão rejeitada, erros, exclusão  |
+| `--ring`                                      | emerald-600               | emerald-400 | anel de foco visível (teclado)       |
+| demais (`--background`, `--card`, `--muted`…) | neutros shadcn existentes | idem        | superfícies                          |
 
 Uso em Tailwind: `bg-primary`, `text-success`, `text-warning`, `bg-success/15` (soft badge), etc.
 
@@ -64,20 +64,20 @@ Diff (FR-016): remoção `bg-destructive/15`, adição `bg-success/15`, sobre `-
 
 ## 3. Tipografia
 
-| Papel | Fonte | Classe |
-|---|---|---|
-| Corpo e headings | Geist Sans (`next/font`, já carregada) | `font-sans` (padrão) |
-| HTML bruto / código / GUIDs | Geist Mono | `font-mono` |
+| Papel                       | Fonte                                  | Classe               |
+| --------------------------- | -------------------------------------- | -------------------- |
+| Corpo e headings            | Geist Sans (`next/font`, já carregada) | `font-sans` (padrão) |
+| HTML bruto / código / GUIDs | Geist Mono                             | `font-mono`          |
 
 Escala (Tailwind padrão — não inventar tamanhos):
 
-| Uso | Classe |
-|---|---|
-| Título de página (h1) | `text-2xl font-semibold tracking-tight` |
-| Título de seção/card (h2) | `text-lg font-semibold` |
-| Corpo | `text-base` (mobile) / `text-sm` (tabelas densas) |
-| Metadados (autor, data, contagens) | `text-sm text-muted-foreground` |
-| Labels de formulário | `text-sm font-medium` |
+| Uso                                | Classe                                            |
+| ---------------------------------- | ------------------------------------------------- |
+| Título de página (h1)              | `text-2xl font-semibold tracking-tight`           |
+| Título de seção/card (h2)          | `text-lg font-semibold`                           |
+| Corpo                              | `text-base` (mobile) / `text-sm` (tabelas densas) |
+| Metadados (autor, data, contagens) | `text-sm text-muted-foreground`                   |
+| Labels de formulário               | `text-sm font-medium`                             |
 
 ## 4. Espaçamento, raio, sombra, movimento
 
@@ -104,22 +104,22 @@ Adicione via shadcn registry (estilo `base-nova`, ícones lucide). Conjunto do M
 
 ### Button (primário)
 
-| Propriedade | Default | Hover | Active | Disabled | Focus |
-|---|---|---|---|---|---|
-| Background | `primary` | `primary/90` | `primary/80` | `muted` | `primary` |
-| Texto | `primary-foreground` | idem | idem | `muted-foreground` | idem |
-| Anel | — | — | — | — | `ring-2 ring-ring ring-offset-2` |
+| Propriedade | Default              | Hover        | Active       | Disabled           | Focus                            |
+| ----------- | -------------------- | ------------ | ------------ | ------------------ | -------------------------------- |
+| Background  | `primary`            | `primary/90` | `primary/80` | `muted`            | `primary`                        |
+| Texto       | `primary-foreground` | idem         | idem         | `muted-foreground` | idem                             |
+| Anel        | —                    | —            | —            | —                  | `ring-2 ring-ring ring-offset-2` |
 
 Variantes: `default` (ações principais: enviar sugestão, assinar), `outline` (secundárias:
 filtrar, cancelar), `ghost` (ícones do header), `destructive` (rejeitar, excluir).
 
 ### Badge de status de sugestão
 
-| Status | Classe | Rótulo pt-BR |
-|---|---|---|
-| `pending` | `bg-warning/15 text-warning` | Pendente |
-| `accepted` | `bg-success/15 text-success` | Aceita |
-| `rejected` | `bg-destructive/15 text-destructive` | Rejeitada |
+| Status     | Classe                               | Rótulo pt-BR |
+| ---------- | ------------------------------------ | ------------ |
+| `pending`  | `bg-warning/15 text-warning`         | Pendente     |
+| `accepted` | `bg-success/15 text-success`         | Aceita       |
+| `rejected` | `bg-destructive/15 text-destructive` | Rejeitada    |
 
 Categorias de mudança (FR-013) usam `variant="secondary"` (neutro): Conteúdo atualizado,
 Ortografia/Gramática, Erro de conteúdo, Nova tag, Tag atualizada, Outro.
@@ -149,12 +149,12 @@ Ortografia/Gramática, Erro de conteúdo, Nova tag, Tag atualizada, Outro.
 
 ## 7. Estados de tela
 
-| Estado | Padrão |
-|---|---|
-| **Carregando** | `Skeleton` com a silhueta do conteúdo real (linhas de card, campos). Nunca spinner de página inteira. Botões em submissão: `disabled` + rótulo "Enviando…". |
-| **Vazio** | Bloco centralizado: ícone lucide `text-muted-foreground`, título curto (`text-lg font-medium`), frase de ação e botão primário quando houver ação. Ex.: "Nenhuma sugestão ainda — Seja o primeiro a sugerir uma melhoria." |
-| **Erro** | `Alert` `variant="destructive"` com mensagem legível do corpo `{"detail": …}` da API e botão "Tentar novamente" quando a query for refazível. 401 → link para `/login`. |
-| **429 (rate limit)** | Aviso `text-warning` com o tempo do `Retry-After`: "Aguarde Xs antes de enviar novamente." |
+| Estado               | Padrão                                                                                                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Carregando**       | `Skeleton` com a silhueta do conteúdo real (linhas de card, campos). Nunca spinner de página inteira. Botões em submissão: `disabled` + rótulo "Enviando…".                                                                |
+| **Vazio**            | Bloco centralizado: ícone lucide `text-muted-foreground`, título curto (`text-lg font-medium`), frase de ação e botão primário quando houver ação. Ex.: "Nenhuma sugestão ainda — Seja o primeiro a sugerir uma melhoria." |
+| **Erro**             | `Alert` `variant="destructive"` com mensagem legível do corpo `{"detail": …}` da API e botão "Tentar novamente" quando a query for refazível. 401 → link para `/login`.                                                    |
+| **429 (rate limit)** | Aviso `text-warning` com o tempo do `Retry-After`: "Aguarde Xs antes de enviar novamente."                                                                                                                                 |
 
 ## 8. Navegação global
 
@@ -177,7 +177,7 @@ Ortografia/Gramática, Erro de conteúdo, Nova tag, Tag atualizada, Outro.
   └─ /decks/[id]               Detalhe do deck (assinar, abas: Notas | Sugestões)
        ├─ /decks/[id]/notes/[noteId]/suggest    Sugerir mudança (editor + diff)
        ├─ /decks/[id]/suggest-bulk              Sugestão em lote (seleção de notas)
-       └─ /decks/[id]/suggestions               Community Suggestions (3 abas)
+       └─ /decks/[id]/suggestions               Sugestões da comunidade (3 abas)
 ```
 
 - **Breadcrumb** em toda página abaixo do catálogo: `text-sm text-muted-foreground`,
@@ -195,6 +195,4 @@ Ortografia/Gramática, Erro de conteúdo, Nova tag, Tag atualizada, Outro.
 
 ## 10. Débito conhecido
 
-- `(auth)/login|register|password-reset`, `account`, `decks`, `decks/[id]` ainda usam as classes
-  legadas `.form-page`/`.deck-list` — retrofit rastreado em T109; telas novas (T051+) já nascem
-  neste sistema.
+- Nenhum débito visual conhecido nas telas do MVP.
