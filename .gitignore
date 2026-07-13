@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.o
+*.so
+*.dylib
+*.a
+
+# Large files that may exceed GitHub limit
+addon/.venv/
+node_modules/.bin/
+node_modules/.cache/
