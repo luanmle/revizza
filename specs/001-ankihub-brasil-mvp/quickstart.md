@@ -53,8 +53,9 @@ Reabrir o Anki Desktop; configurar a URL do backend local nas preferências do a
 ## Cenário de validação 1 — Sync inicial (User Story 1, 2 e 3)
 
 1. Cadastrar um usuário via `POST /api/v1/accounts/register/` (ou pela UI web).
-2. Como moderador, publicar um deck de teste via `POST /api/v1/decks/{id}/publish/` (ou fluxo
-   equivalente do add-on) com pelo menos 1 tipo de nota e 2 notas.
+2. Como criador autenticado, importar uma única vez um deck de teste via
+   `POST /api/v1/decks/{id}/publish/` com pelo menos 1 tipo de nota e 2 notas. Confirmar que repetir
+   a chamada para o mesmo ID responde `409`; mudanças posteriores passam pela web/sugestões.
 3. Logar na web com o usuário estudante, abrir o catálogo (`/decks/`) e confirmar que o deck
    aparece com contagem de notas correta (FR-006).
 4. Clicar em "Inscrever-se" — confirmar `201` em `POST /decks/{id}/subscriptions/` (FR-009).

@@ -164,10 +164,10 @@ class MediaDownloadView(APIView):
 
 
 class PublishView(APIView):
-    """POST /decks/{id}/publish/ — upload inicial/re-publish de um deck (T035).
+    """POST /decks/{id}/publish/ — importação inicial de um deck (T035).
 
     O add-on gera o UUID do deck no primeiro publish; o criador vira o
-    moderador original. Re-publish exige moderador ativo.
+    moderador original. Depois disso, a web é a única fonte de mudanças.
     """
 
     def post(self, request, deck_id):
@@ -179,78 +179,47 @@ class PublishView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        deck = Deck.objects.filter(pk=deck_id).first()
-        if (
-            deck
-            and not DeckModerator.objects.filter(
-                deck=deck, user=request.user, status="active"
-            ).exists()
-        ):
+        if Deck.objects.filter(pk=deck_id).exists():
             return Response(
-                {"detail": "Apenas moderadores podem publicar neste deck."},
-                status=status.HTTP_403_FORBIDDEN,
+                {
+                    "detail": (
+                        "O deck já foi importado; alterações devem passar pela web "
+                        "e pelo fluxo de sugestões."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
             )
 
         now = timezone.now()
         with transaction.atomic():
-            if deck is None:
-                note_type = NoteType.objects.create(
-                    name=note_type_data.get("name", "Básico"),
-                    field_names=note_type_data["field_names"],
-                    templates=note_type_data.get("templates", []),
-                    css=note_type_data.get("css", ""),
-                )
-                deck = Deck.objects.create(
-                    id=deck_id,
-                    name=data["name"],
-                    description=data.get("description", ""),
-                    subject_tags=data.get("subject_tags", []),
-                    note_type=note_type,
-                )
-                DeckModerator.objects.create(
-                    deck=deck, user=request.user, status="active"
-                )
-            else:
-                note_type = deck.note_type
-                new_templates = note_type_data.get("templates", note_type.templates)
-                if len(new_templates) != len(note_type.templates):
-                    note_type.structure_changed_at = now  # FR-035
-                note_type.name = note_type_data.get("name", note_type.name)
-                note_type.field_names = note_type_data["field_names"]
-                note_type.templates = new_templates
-                note_type.css = note_type_data.get("css", note_type.css)
-                note_type.save()
-                deck.name = data["name"]
-                deck.description = data.get("description", deck.description)
-                deck.subject_tags = data.get("subject_tags", deck.subject_tags)
+            note_type = NoteType.objects.create(
+                name=note_type_data.get("name", "Básico"),
+                field_names=note_type_data["field_names"],
+                templates=note_type_data.get("templates", []),
+                css=note_type_data.get("css", ""),
+            )
+            deck = Deck.objects.create(
+                id=deck_id,
+                name=data["name"],
+                description=data.get("description", ""),
+                subject_tags=data.get("subject_tags", []),
+                note_type=note_type,
+            )
+            DeckModerator.objects.create(
+                deck=deck, user=request.user, status="active"
+            )
 
-            existing = {n.guid: n for n in deck.notes.all()}
             for item in data.get("notes", []):
                 fields = sanitize_field_values(item.get("field_values", {}))  # FR-015
-                tags = item.get("tags", [])
-                path = item.get("anki_deck_path", "")
-                note = existing.get(item["guid"])
-                if note is None:
-                    Note.objects.create(
-                        deck=deck,
-                        note_type=note_type,
-                        guid=item["guid"],
-                        field_values=fields,
-                        tags=tags,
-                        anki_deck_path=path,
-                        mod=now,
-                    )
-                elif (note.field_values, note.tags, note.anki_deck_path) != (
-                    fields,
-                    tags,
-                    path,
-                ) or note.deleted_at is not None:
-                    note.field_values = fields
-                    note.tags = tags
-                    note.anki_deck_path = path
-                    note.deleted_at = None
-                    note.mod = now  # entra no próximo delta dos assinantes
-                    note.save()
+                Note.objects.create(
+                    deck=deck,
+                    note_type=note_type,
+                    guid=item["guid"],
+                    field_values=fields,
+                    tags=item.get("tags", []),
+                    anki_deck_path=item.get("anki_deck_path", ""),
+                    mod=now,
+                )
 
             deck.note_count = deck.notes.filter(deleted_at__isnull=True).count()
             deck.save()

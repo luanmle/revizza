@@ -1,6 +1,19 @@
 <!--
 Sync Impact Report
 ==================
+Current amendment:
+  - Version change: 1.1.0 to 1.2.0 (minor — Principle II materially clarified).
+  - Modified Principle II to permit exactly one authenticated initial import
+    into a nonexistent deck and forbid add-on republication afterward.
+  - Added/removed sections: none.
+  - ✅ `.specify/templates/plan-template.md`, `spec-template.md`, and
+    `tasks-template.md`: no changes needed.
+  - ✅ `specs/001-ankihub-brasil-mvp/plan.md`, `contracts/sync.md`,
+    `quickstart.md`, and `tasks.md`: initial-import boundary propagated.
+  - ✅ `CLAUDE.md`: constitution version and sync constraint updated.
+  - ✅ `PRD-AnkiHub-Brasil.md`: already distinguishes initial import from sync.
+
+Previous amendment (historical):
 Version change: 1.0.1 → 1.1.0 (minor — two new principles added)
 Modified principles: none renamed/removed
 Added sections:
@@ -61,11 +74,16 @@ no compensating benefit to users.
 ### II. Unidirectional Sync — Web Is the Source of Truth (NON-NEGOTIABLE)
 
 The web platform is always the authoritative source for deck/note content.
-The Anki add-on MUST NOT push local edits back to the backend under any
-circumstance in the MVP; all content changes flow web → Anki local only,
-via the suggestion → moderation → sync-queue pipeline. Locally protected
-fields/tags (per-deck configuration or the `AnkiHubBR_Protect::<Campo>` tag
-convention) are the only exception a sync operation may leave untouched.
+The only upstream content operation permitted from the add-on is a one-time
+initial import by an authenticated creator into a deck ID that does not yet
+exist. That import creates the first official web snapshot atomically and
+MUST be rejected if the deck already exists; it MUST NOT republish, merge,
+or overwrite local changes afterward. Once the official snapshot exists,
+the add-on MUST NOT push local edits back to the backend under any
+circumstance in the MVP: all content changes flow web → Anki local only via
+the suggestion → moderation → sync-queue pipeline. Locally protected fields
+and tags (per-deck configuration or the `AnkiHubBR_Protect::<Campo>` tag
+convention) are the only content a sync operation may leave untouched.
 When a delta is structurally too large to reconcile safely (e.g. a note
 type's template count changed), the add-on MUST fall back to a full deck
 resync rather than partially applying the delta.
@@ -73,7 +91,9 @@ resync rather than partially applying the delta.
 **Rationale**: This is the explicitly identified mitigation (PRD §5.2) for
 the highest-impact technical risk in the product: sync conflicts that could
 corrupt, duplicate, or silently delete a user's local notes and spaced-
-repetition history. Any bidirectional-sync shortcut reintroduces that risk.
+repetition history. The create-only initial import has no existing official
+state to merge with; allowing any later upstream write would reintroduce the
+same conflict risk and is forbidden.
 
 ### III. Privacy & LGPD Compliance by Design
 
@@ -238,4 +258,4 @@ treat the corresponding principle (II, III, IV) as a hard gate, not a
 suggestion. Reviewers of frontend PRs should additionally hold the line on
 Principles VI and VII (docs-verified APIs, minimal code, design pipeline).
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-13
+**Version**: 1.2.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-13

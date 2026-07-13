@@ -389,7 +389,7 @@ Com múltiplos desenvolvedores, após Foundational:
 **Purpose**: Lacunas entre spec/plan/contracts e o tasks.md original, detectadas por /speckit-converge em 2026-07-12 — trabalho não coberto por nenhuma tarefa existente (T017–T100 seguem válidas e não são duplicadas aqui)
 
 - [ ] T101 [CRITICAL] Implement add-on login dialog and Supabase Auth token acquisition/storage (feeding `AnkiHubBrClient`) in `addon/ankihub_br/gui/` per FR-031 / plan: addon gui login dialog (missing)
-- [ ] T102 Implement add-on deck publish/upload flow (export local deck → `POST /api/v1/decks/{id}/publish/` with note types, notes, media) in `addon/ankihub_br/main/` and `addon/ankihub_br/gui/` per plan: contracts/sync.md publish endpoint (missing)
+- [ ] T102 Implement the create-only add-on initial deck import flow (export local deck once → `POST /api/v1/decks/{id}/publish/` with note types, notes, media; surface `409` without retry when the deck already exists) in `addon/ankihub_br/main/` and `addon/ankihub_br/gui/` per plan: contracts/sync.md publish endpoint (missing)
 - [X] T103 Add subdeck placement of notes to the backend data model (e.g. `Note.anki_deck_path` in `backend/apps/notes/models.py`) and include the subdecks segment in publish/delta/full payloads per FR-034 (missing)
 - [X] T104 Create MediaFile model (`deck`, `content_hash`, `storage_path`, `original_filename`) in `backend/apps/notes/models.py` per plan: data-model MediaFile / FR-036 (missing)
 - [ ] T105 Apply `RATELIMIT_SUGGESTION_RATE` via `@ratelimit` to suggestion-submission endpoints in `backend/apps/suggestions/views.py` per FR-052 (partial)
@@ -405,3 +405,25 @@ Com múltiplos desenvolvedores, após Foundational:
 - [ ] T108 Run an accessibility audit (labels, AA contrast, keyboard operability per FR-055/SC-009) across implemented MVP screens (`frontend/src/app/(auth)/`, `account/`, `decks/`) via `/impeccable audit`, fixing findings before new screens are added in `frontend/src/` (missing)
 - [ ] T109 [P] Retrofit `frontend/src/app/(auth)/login,register,password-reset/page.tsx`, `account/page.tsx`, `decks/page.tsx`, `decks/[id]/page.tsx` from legacy `.form-page`/`.deck-list` CSS Modules classes onto Tailwind CSS 4 + shadcn/ui components, per Constitution Principle VII / research.md #14 (partial)
 - [ ] T110 Confirm all UI copy, labels, and error messages across implemented screens (`frontend/src/app/`) are in pt-BR per FR-056 (missing)
+
+---
+
+## Phase 19: Convergence
+
+**Purpose**: Lacunas adicionais entre spec/plan/constituição e o código atual, sem duplicar o trabalho já rastreado em T069–T110
+
+- [X] T111 [CRITICAL] Resolve the conflict between the add-on-originated `PublishView`/`T102` flow and strictly unidirectional web→Anki sync before implementing T102; remove/supersede that flow unless an explicit governance amendment authorizes initial import per Constitution II / plan: unidirectional sync (contradicts)
+- [ ] T112 [CRITICAL] Reject non-HTTPS API base URLs in `addon/ankihub_br/ankihub_br_client/client.py` and add a focused client test per Constitution IV (contradicts)
+- [ ] T113 Refactor sync orchestration so one user run covers all subscribed decks under one concurrency/10-second boundary without self-rate-limiting later decks or letting delta/full groups bypass the lock per FR-032 (partial)
+- [ ] T114 Move backup/rollback to the whole multi-deck `sync_all` run and add one later-deck-failure check proving earlier deck changes are reverted per FR-039 / US3/AC10 (partial)
+- [ ] T115 Add the minimal add-on preferences UI for automatic-on-open, chained-native, manual sync, and delete-vs-mark removal settings, persisting them through the existing subscription PATCH endpoint per US3/AC2, US3/AC3, FR-037 (missing)
+- [ ] T116 Add required text-alignment and font-size controls to `frontend/src/components/RichTextEditor.tsx`, keeping output compatible with the existing sanitizer per US4/AC2 / FR-014 (partial)
+- [ ] T117 Add a review control to expand unchanged fields and tags alongside the existing changed-field diff in `frontend/src/app/decks/[id]/notes/[noteId]/suggest/page.tsx` per US4/AC3 (partial)
+- [ ] T118 Make bulk suggestions collect and submit the shared proposed correction instead of creating a no-op suggestion, with one contract/UI check per US4/AC5 / FR-017 (partial)
+- [ ] T119 Show current-vs-suggested values, linked note context, and the note's open-suggestion count on Community Suggestions cards per US5/AC3 (partial)
+- [ ] T120 Extend `frontend/src/components/NotePreview.tsx` beyond its documented template subset so supported Anki cloze, hint/filter, and nested conditional templates render faithfully, with focused fixtures per FR-011 (partial)
+- [ ] T121 Add a representative 10k-note search performance check for the 500ms budget and optimize the query only if it fails per FR-010 / SC-005 (missing)
+- [ ] T122 Add a focused page-transition and note-preview performance check for the 500ms typical-load budget per FR-054 (missing)
+- [ ] T123 Add the planned Playwright P1 flow covering cadastro→assinatura→sugestão→moderação in `frontend/tests/e2e/` per plan: testing strategy (missing)
+- [ ] T124 Reject votes by a suggestion's own author in `backend/apps/suggestions/views.py` and hide self-vote controls in the Community Suggestions UI per US5/AC4 / FR-023 (partial)
+- [ ] T125 Persist, sanitize, display in the diff, and apply proposed tag additions/updates for single and bulk change suggestions per US4/AC3, US4/AC5 / FR-013 (partial)

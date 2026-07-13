@@ -64,33 +64,19 @@ def test_publish_creates_deck_notes_and_moderator(auth_client, user):
     assert note.anki_deck_path == "Parte Geral"
 
 
-def test_republish_flags_structural_change_and_requires_moderator(
-    auth_client, api_client, user
-):
+def test_republish_is_rejected_and_keeps_web_content_authoritative(auth_client):
     deck_id = uuid.uuid4()
     url = f"/api/v1/decks/{deck_id}/publish/"
     auth_client.post(url, _payload(), format="json")
 
-    # não-moderador não pode re-publicar
-    import uuid as _uuid
-
-    from rest_framework.test import APIClient
-
-    from apps.accounts.models import User
-
-    other = User.objects.create(auth_id=_uuid.uuid4(), email="outro@example.com")
-    other_client = APIClient()
-    other_client.force_authenticate(user=other)
-    assert other_client.post(url, _payload(), format="json").status_code == 403
-
-    # re-publish com nº de templates diferente marca mudança estrutural (FR-035)
     changed = _payload()
+    changed["name"] = "Tentativa de sobrescrita local"
     changed["note_type"]["templates"].append(
         {"name": "Card 2", "qfmt": "{{Verso}}", "afmt": "{{Frente}}"}
     )
     response = auth_client.post(url, changed, format="json")
 
-    assert response.status_code == 201
+    assert response.status_code == 409
     deck = Deck.objects.get(pk=deck_id)
-    assert deck.note_type.structure_changed_at is not None
-    assert deck.media_files.count() == 1  # hash igual não duplica (FR-036)
+    assert deck.name == "Direito Penal"
+    assert len(deck.note_type.templates) == 1

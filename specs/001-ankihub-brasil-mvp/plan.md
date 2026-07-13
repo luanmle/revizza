@@ -56,7 +56,9 @@ com ciclos de deploy independentes.
 **Performance Goals**: Busca de notas e transições de página em até 500ms para decks de até 10 mil
 notas (FR-010, FR-054); sincronização incremental por delta (não repuxa o deck inteiro a cada vez).
 
-**Constraints**: Sincronização sempre unidirecional (web → Anki local, nunca o contrário);
+**Constraints**: Após a importação inicial única de um deck inexistente pelo criador via add-on,
+sincronização sempre unidirecional (web → Anki local, nunca o contrário); republicação ou merge
+de edições locais pelo add-on é proibido e a importação responde `409` se o deck já existir;
 intervalo mínimo de 10s entre sincronizações do mesmo usuário (FR-032); toda tela funcional em
 360px de largura sem rolagem horizontal (FR-053); toda tela atende requisitos básicos de
 acessibilidade — labels em formulários, contraste AA, operação via teclado (FR-055); toda a
@@ -82,7 +84,7 @@ de até 10 mil notas (RNF-002); 13 user stories / 54 requisitos funcionais do sp
 | Princípio | Avaliação | Como o plano atende |
 |---|---|---|
 | I. Parity Over Reinvention | PASS | API segue as convenções já observadas do AnkiHub original: DRF `CursorPagination` (campo `next`), rotas com barra final, endpoint de sugestão em lote (`bulk-change-suggestions`), convenção de tag `AnkiHubBR_Protect::<Campo>`. A estrutura interna do add-on (`main/db/*_client/gui`), os hooks usados (`profile_did_open`/`sync_did_finish` + monkey-patch pontual em `AnkiQt._sync_collection_and_media`) e o versionamento de API via header `Accept` também replicam o add-on/backend real (PRD §4.6) em vez de redesenhados do zero. |
-| II. Unidirectional Sync — Web Is the Source of Truth | PASS | O add-on nunca expõe endpoint de escrita de edição local para o backend; toda contribuição de conteúdo passa pelo fluxo de sugestão. Backup automático + reversão em falha (FR-039) e fallback para resync completo (FR-035) são parte do design da Fase 1 (ver data-model.md e contracts/sync.md). |
+| II. Unidirectional Sync — Web Is the Source of Truth | PASS | O add-on permite somente a importação inicial autenticada em um deck inexistente; a rota responde `409` a qualquer republicação. Depois do primeiro snapshot oficial, toda contribuição de conteúdo passa pelo fluxo de sugestão. Backup automático + reversão em falha (FR-039) e fallback para resync completo (FR-035) são parte do design da Fase 1 (ver data-model.md e contracts/sync.md). |
 | III. Privacy & LGPD Compliance by Design | PASS | Consentimentos granulares, exclusão com carência de 7 dias e exportação em JSON são campos/endpoints de primeira classe no data model e nos contratos (accounts.md), não uma adição posterior. |
 | IV. Secure by Default | PASS | `nh3` sanitiza todo HTML de campo rich-text no backend antes de persistir (FR-015); HTTPS obrigatório via Heroku/Supabase (ambos forçam TLS); `django-ratelimit` nos endpoints de sync e sugestão (FR-052); senha nunca gerenciada por código próprio (Supabase Auth). |
 | V. MVP Scope Discipline (YAGNI) | PASS | Sem Celery/Redis, sem notificações assíncronas, sem Optional Tag Groups, sem hierarquia de moderador — todos deferidos ao v1.1/v2.0 conforme PRD §2.3/§5.1. E-mails transacionais (verificação, recuperação de senha) usam o mecanismo nativo do Supabase Auth em vez de infraestrutura própria. |

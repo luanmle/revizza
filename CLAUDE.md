@@ -9,7 +9,7 @@ Implementation is underway (US1/US2 of the MVP spec are built; US3 partially). T
 - `PRD-AnkiHub-Brasil.md` — the product requirements document (in Portuguese) and the single source of truth for scope, user stories, and technical decisions.
 - `specs/001-ankihub-brasil-mvp/` — the active spec-kit feature (spec, plan, tasks, contracts, data model).
 - `.specify/` — a [spec-kit](https://github.com/github/spec-kit) (speckit) scaffold for spec-driven development (specify → plan → tasks → implement).
-- `.specify/memory/constitution.md` — **ratified** (v1.1.0): seven principles including unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, and the ui-ux-pro-max→impeccable design pipeline. Check it before starting any work.
+- `.specify/memory/constitution.md` — **ratified** (v1.2.0): seven principles including create-only initial deck import followed by unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, and the ui-ux-pro-max→impeccable design pipeline. Check it before starting any work.
 - `backend/` (Django + DRF, pytest), `frontend/` (Next.js 16 + Tailwind 4 + shadcn/ui, Vitest/Playwright), `addon/` (Anki add-on, pytest) — see each subtree and `frontend/AGENTS.md` for local rules.
 
 ## Working with the spec-kit workflow
@@ -43,7 +43,7 @@ This project uses spec-kit slash commands (available as skills: `speckit-specify
 3. **Suggest → moderate → propagate:** users submit change/new-note/delete suggestions (categorized, with required justification) → visible to all subscribers on the "Community Suggestions" screen with like/dislike and per-suggestion discussion threads → a moderator (a deck can have multiple, all equal-permission) accepts/rejects → accepted changes update the official note and enter the sync queue for all subscribers.
 
 **Notable constraints that should shape implementation choices:**
-- Sync is **unidirectional** (web is always the source of truth); the add-on never pushes local edits back — this is the deliberate mitigation for merge-conflict risk (PRD §5.2).
+- After a one-time authenticated import into a nonexistent deck, sync is **unidirectional** (web is always the source of truth); the add-on cannot republish or push later local edits back — this is the deliberate mitigation for merge-conflict risk (PRD §5.2).
 - Rich-text (WYSIWYG) fields store raw HTML compatible with native Anki fields — **must be sanitized server-side** (allowlist tags/attributes, no `<script>`/inline handlers) before persisting or rendering, this is a called-out stored-XSS risk.
 - LGPD compliance requirements are specific: separate opt-in consent (not pre-checked) for marketing emails vs. research data use, 7-day grace period on account deletion, and JSON data export on request (US-13).
 - AI features (smart search, study chatbot) are explicitly out of scope until v2.0 — don't introduce LLM/AI dependencies for MVP work.

@@ -5,12 +5,14 @@ Anki — nunca diretamente pelo frontend web.
 
 | Método | Rota | Auth | Descrição | Requisito |
 |---|---|---|---|---|
-| POST | `/api/v1/decks/{id}/publish/` | moderador do deck | Upload inicial de um deck (tipos de nota, notas, mídia) — cria o deck e seu conteúdo oficial | PRD §4.1 |
+| POST | `/api/v1/decks/{id}/publish/` | criador autenticado | Importação inicial única (tipos de nota, notas, mídia) — cria o primeiro snapshot oficial; responde `409` se o deck já existir e nunca republica conteúdo local | PRD §4.1, Constituição II |
 | GET | `/api/v1/decks/{id}/sync/delta/` | assinante | Retorna o delta desde `?since_mod=<timestamp>`, na ordem tipos de nota → notas → subdecks; inclui `full_resync_required: bool` quando a mudança estrutural não é reconciliável via delta parcial | FR-031, FR-034, FR-035 |
 | GET | `/api/v1/decks/{id}/sync/full/` | assinante | Retorna o deck completo (tipos de nota, notas, tags, subdecks) para ressincronização total | FR-035 |
 | GET | `/api/v1/media/{content_hash}/` | assinante | Retorna URL pré-assinada do Supabase Storage para a mídia, apenas se o hash não corresponde ao já presente localmente | FR-036 |
 
 **Regras aplicadas neste conjunto de rotas**:
+- Publicação: o `POST .../publish/` é create-only. Depois da importação inicial, mudanças oficiais
+  entram pela web e pelo fluxo de sugestão → moderação; o add-on nunca sobrescreve o deck oficial.
 - Rate limit: no máximo uma requisição de sincronização (`delta`/`full`) por usuário a cada 10
   segundos; excesso responde `429` (FR-032, FR-052).
 - Compatibilidade: o add-on só é suportado rodando na versão LTS mais recente do Anki Desktop —
