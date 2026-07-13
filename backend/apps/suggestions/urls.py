@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import decisions, views
 
 urlpatterns = [
     path(
@@ -8,4 +8,26 @@ urlpatterns = [
         views.ChangeSuggestionCreateView.as_view(),
     ),
     path("suggestions/bulk-change/", views.BulkChangeSuggestionCreateView.as_view()),
+    path("decks/<uuid:deck_id>/suggestions/", views.DeckSuggestionListView.as_view()),
+    path("suggestions/<uuid:suggestion_id>/", views.SuggestionDetailView.as_view()),
+    path(
+        "suggestions/<uuid:suggestion_id>/votes/",
+        views.SuggestionVoteView.as_view(),
+    ),
+    path(
+        "suggestions/<uuid:suggestion_id>/votes/me/",
+        views.SuggestionVoteMeView.as_view(),
+    ),
+    path(
+        "suggestions/<uuid:suggestion_id>/comments/",
+        views.SuggestionCommentsView.as_view(),
+    ),
+    path(
+        "suggestions/<uuid:suggestion_id>/accept/",
+        decisions.SuggestionAcceptView.as_view(),
+    ),
+    path(
+        "suggestions/<uuid:suggestion_id>/reject/",
+        decisions.SuggestionRejectView.as_view(),
+    ),
 ]

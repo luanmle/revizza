@@ -65,6 +65,45 @@ def make_note(make_deck):
 
 
 @pytest.fixture
+def make_user(db):
+    def _make(email):
+        return User.objects.create(auth_id=uuid.uuid4(), email=email)
+
+    return _make
+
+
+@pytest.fixture
+def make_suggestion(user, make_note):
+    from apps.suggestions.models import Suggestion, SuggestionTargetNote
+
+    def _make(notes=None, author=None, **kwargs):
+        notes = notes or [make_note()]
+        kwargs.setdefault("type", Suggestion.Type.CHANGE)
+        if kwargs["type"] == Suggestion.Type.CHANGE:
+            kwargs.setdefault("change_category", "erro_conteudo")
+        kwargs.setdefault("justification", "Justificativa de teste.")
+        suggestion = Suggestion.objects.create(
+            deck=notes[0].deck, author=author or user, **kwargs
+        )
+        SuggestionTargetNote.objects.bulk_create(
+            SuggestionTargetNote(suggestion=suggestion, note=note) for note in notes
+        )
+        return suggestion
+
+    return _make
+
+
+@pytest.fixture
+def make_moderator(db):
+    from apps.catalog.models import DeckModerator
+
+    def _make(deck, user, status=DeckModerator.Status.ACTIVE):
+        return DeckModerator.objects.create(deck=deck, user=user, status=status)
+
+    return _make
+
+
+@pytest.fixture
 def subscribe(user):
     from apps.catalog.models import Subscription
 

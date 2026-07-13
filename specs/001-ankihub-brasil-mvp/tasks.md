@@ -159,21 +159,21 @@
 
 ### Tests for User Story 5
 
-- [ ] T054 [P] [US5] Contract test `GET /decks/{id}/suggestions/` filters in `backend/tests/contract/test_suggestions_list.py`
-- [ ] T055 [P] [US5] Contract test votes/comments/accept/reject in `backend/tests/contract/test_suggestions_moderation.py`
+- [X] T054 [P] [US5] Contract test `GET /decks/{id}/suggestions/` filters in `backend/tests/contract/test_suggestions_list.py`
+- [X] T055 [P] [US5] Contract test votes/comments/accept/reject in `backend/tests/contract/test_suggestions_moderation.py`
 
 ### Implementation for User Story 5
 
-- [ ] T056 [US5] Create SuggestionVote model in `backend/apps/suggestions/models.py`
-- [ ] T057 [US5] Create Comment model (nota XOR sugestão FK) in `backend/apps/discussions/models.py`
-- [ ] T058 [US5] Implement suggestion list/filter/detail endpoints in `backend/apps/suggestions/views.py`
-- [ ] T059 [US5] Implement vote upsert endpoints in `backend/apps/suggestions/views.py`
-- [ ] T060 [US5] Implement suggestion-comment thread endpoints in `backend/apps/suggestions/views.py`
-- [ ] T061 [US5] Implement accept endpoint (aplica na Note oficial, enfileira sync) in `backend/apps/suggestions/decisions.py`
-- [ ] T062 [US5] Implement reject endpoint with `rejection_reason` in `backend/apps/suggestions/decisions.py`
-- [ ] T063 [US5] Enforce moderator-only permission on accept/reject in `backend/apps/suggestions/permissions.py`
-- [ ] T064 [P] [US5] Build Community Suggestions screen (3 abas, filtros, votos, thread) in `frontend/src/app/decks/[id]/suggestions/page.tsx`
-- [ ] T065 [P] [US5] Build moderator accept/reject controls in `frontend/src/components/SuggestionModerationControls.tsx`
+- [X] T056 [US5] Create SuggestionVote model in `backend/apps/suggestions/models.py`
+- [X] T057 [US5] Create Comment model (nota XOR sugestão FK) in `backend/apps/discussions/models.py`
+- [X] T058 [US5] Implement suggestion list/filter/detail endpoints in `backend/apps/suggestions/views.py`
+- [X] T059 [US5] Implement vote upsert endpoints in `backend/apps/suggestions/views.py`
+- [X] T060 [US5] Implement suggestion-comment thread endpoints in `backend/apps/suggestions/views.py`
+- [X] T061 [US5] Implement accept endpoint (aplica na Note oficial, enfileira sync) in `backend/apps/suggestions/decisions.py`
+- [X] T062 [US5] Implement reject endpoint with `rejection_reason` in `backend/apps/suggestions/decisions.py`
+- [X] T063 [US5] Enforce moderator-only permission on accept/reject in `backend/apps/suggestions/permissions.py`
+- [X] T064 [P] [US5] Build Community Suggestions screen (3 abas, filtros, votos, thread) in `frontend/src/app/decks/[id]/suggestions/page.tsx`
+- [X] T065 [P] [US5] Build moderator accept/reject controls in `frontend/src/components/SuggestionModerationControls.tsx`
 
 **Checkpoint**: 🎯 Fatia P1 completa — MVP demonstrável ponta-a-ponta (quickstart cenário 2)
 

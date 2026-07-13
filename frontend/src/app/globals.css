@@ -22,17 +22,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
 /* Tema segue a classe .dark aplicada pelo script inline do layout (design-system/MASTER.md §5) */
 :root {
   color-scheme: light;

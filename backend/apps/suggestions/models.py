@@ -56,6 +56,29 @@ class Suggestion(BaseModel):
         indexes = [models.Index(fields=["deck", "status"])]  # filtros da tela (FR-021)
 
 
+class SuggestionVote(BaseModel):
+    """Curtida/descurtida em sugestão — um voto por usuário, upsert (FR-023)."""
+
+    class Value(models.TextChoices):
+        LIKE = "like"
+        DISLIKE = "dislike"
+
+    suggestion = models.ForeignKey(
+        Suggestion, on_delete=models.CASCADE, related_name="votes"
+    )
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="suggestion_votes"
+    )
+    value = models.CharField(max_length=7, choices=Value.choices)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["suggestion", "user"], name="unique_vote_per_user"
+            )
+        ]
+
+
 class SuggestionTargetNote(BaseModel):
     """Junção: uma Suggestion `change` pode cobrir várias notas (sugestão em lote, FR-017)."""
 
