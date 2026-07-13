@@ -71,6 +71,13 @@ class AnkiHubBrClient:
     def get_subscribed_decks(self) -> list[dict]:
         return self.get("/decks/", params={"subscribed": "1"}).json()["results"]
 
+    def update_subscription_preferences(
+        self, deck_id: str, preferences: dict
+    ) -> dict:
+        return self.patch(
+            f"/decks/{deck_id}/subscriptions/me/", json=preferences
+        ).json()
+
     def get_deck_delta(self, deck_id: str, since_mod: str | None = None) -> dict:
         params = {"since_mod": since_mod} if since_mod else None
         return self.get(f"/decks/{deck_id}/sync/delta/", params=params).json()
