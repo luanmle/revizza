@@ -2,6 +2,13 @@
 Sync Impact Report
 ==================
 Current amendment:
+  - Version change: 1.2.0 to 1.2.1 (patch — typo fix in Principle I: the
+    protection-tag convention now reads `AnkiHubBR_Protect::<Campo>`,
+    matching Principle II, spec.md FR-041, and the add-on code; no
+    semantic change).
+  - ✅ `CLAUDE.md`: stale `AnkiHub_Protect::<field>` form corrected.
+
+Previous amendment (historical):
   - Version change: 1.1.0 to 1.2.0 (minor — Principle II materially clarified).
   - Modified Principle II to permit exactly one authenticated initial import
     into a nonexistent deck and forbid add-on republication afterward.
@@ -33,9 +40,8 @@ Templates requiring updates:
     the constitution was still an unfilled template.
   - ✅ frontend/AGENTS.md — already aligned (context7/ponytail/styling
     rules recorded there on 2026-07-13, before this amendment).
-  - ⚠ rascunho-frontend.md — working draft that motivated this
-    amendment; fold into spec-kit artifacts and delete (its §8 tracks
-    the remaining steps).
+  - ✅ rascunho-frontend.md — folded into spec-kit artifacts and deleted
+    (resolved after the 1.1.0 amendment).
 Follow-up TODOs:
   - TODO(NUMERIC_KPIS): MVP success-metric targets in the PRD are marked
     `TBD-valor`; no constitutional gate depends on them yet.
@@ -44,9 +50,8 @@ Follow-up TODOs:
   - TODO(HOSTING_YEAR2): PRD §5.3 flags a new open decision — revisit
     backend hosting once the Heroku year-1 credits expire (migrate to
     Railway/Render/Fly.io, or move to paid Heroku).
-  - TODO(DESIGN_SYSTEM): `design-system/MASTER.md` not yet generated;
-    Principle VII expects it as the persistent reference for every new
-    screen (see rascunho-frontend.md §3).
+  - ✅ DESIGN_SYSTEM: `frontend/design-system/MASTER.md` generated (T107);
+    Principle VII's persistent reference now exists — TODO resolved.
 -->
 
 # AnkiHub Brasil Constitution
@@ -59,7 +64,7 @@ When a design or API question already has a proven answer in the real
 AnkiHub product, adopt that answer instead of designing a novel one. This
 applies to API conventions (cursor pagination via `next`, trailing-slash
 routes, bulk-suggestion endpoints), the field/tag protection convention
-(`AnkiHub_Protect::<field>`-style tags), the delta-sync ordering (note
+(`AnkiHubBR_Protect::<Campo>`-style tags), the delta-sync ordering (note
 types → notes → subdeck reorganization), and stack choices already
 confirmed in the PRD (Django + DRF, Supabase-managed auth/storage). A
 deviation from an established AnkiHub pattern MUST be justified in the
@@ -258,4 +263,4 @@ treat the corresponding principle (II, III, IV) as a hard gate, not a
 suggestion. Reviewers of frontend PRs should additionally hold the line on
 Principles VI and VII (docs-verified APIs, minimal code, design pipeline).
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-13
+**Version**: 1.2.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-14

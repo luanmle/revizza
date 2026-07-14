@@ -24,7 +24,7 @@ ressincronização completa e reversão para backup em caso de falha.
 - Backend: Django 5.x, Django REST Framework, `django-ratelimit` (rate limiting, FR-032/FR-052),
   `nh3` (sanitização de HTML via bindings Rust do `ammonia` — FR-015), `supabase-py` (client para
   Storage/Auth admin), Pillow (validação/normalização de imagem antes do hash de conteúdo).
-- Frontend: Next.js 14+ (App Router), React 18, Tiptap (editor rich text WYSIWYG sobre ProseMirror
+- Frontend: Next.js 16 (App Router), React 19, Tiptap (editor rich text WYSIWYG sobre ProseMirror
   — FR-014), TanStack Query (cache/estado de chamadas à API), Tailwind CSS 4 + shadcn/ui (preset
   `base-nova`, componentes acessíveis sobre Radix — base de estilo ratificada na Constituição
   v1.1.0, Princípio VII; ver research.md #14).
@@ -33,8 +33,9 @@ ressincronização completa e reversão para backup em caso de falha.
   hierarquia, FR-055) antes de pronta; componentes shadcn adicionados via MCP.
 - Add-on: bibliotecas nativas do Anki (`aqt`, `anki`), `peewee` (cache local SQLite do estado de
   sincronização por nota — citado no PRD §4.1), `requests` (HTTP contra a API), todas vendorizadas
-  dentro do pacote `.ankiaddon` no build (sem `pip install` em runtime — PRD §4.6); `pytest-anki`
-  como dependência de teste (simula o ambiente do Anki Desktop, incluindo `gui_hooks`).
+  dentro do pacote `.ankiaddon` no build (sem `pip install` em runtime — PRD §4.6); testes rodam com
+  `pytest` puro contra `anki.collection.Collection` headless (pytest-anki 1.0.0b7 é PyQt5-only,
+  incompatível com anki>=25/Qt6 — reavaliar se ganhar release Qt6; ver `addon/requirements.txt`).
 
 **Storage**: PostgreSQL via Supabase (fonte da verdade — decks, notas, tipos de nota, sugestões,
 comentários, denúncias); Supabase Storage para mídia (imagens); SQLite nativo do Anki + tabela
@@ -42,9 +43,11 @@ própria via peewee no cliente (estado de sincronização por nota, não replica
 
 **Testing**: pytest + pytest-django + `factory_boy` (backend, incluindo testes de contrato da API);
 Vitest + React Testing Library (unidade/componentes do frontend) + Playwright (fluxos E2E críticos:
-cadastro→assinatura→sugestão→moderação); `pytest-anki` (add-on — plugin oficial do ecossistema Anki
-que simula o ambiente do Anki Desktop, incluindo `gui_hooks`, sem exigir instalação real nem display
-gráfico), executado contra a LTS vigente e a LTS anterior antes de cada release (PRD §4.6).
+cadastro→assinatura→sugestão→moderação); `pytest` puro contra `anki.collection.Collection` headless
+(add-on — pytest-anki é PyQt5-only e incompatível com anki>=25/Qt6, então os testes instanciam a
+`Collection` real headless sem plugin nem display gráfico), executado contra a LTS mais recente antes
+de cada release; a LTS anterior é exercitada apenas de forma defensiva, sem constituir compromisso de
+suporte (FR-038 restringe o suporte do MVP à LTS mais recente — PRD §4.6).
 
 **Target Platform**: Heroku Common Runtime (dyno Linux, região US) para o backend; navegadores
 web modernos (mobile-first, 360px+) para o frontend; Windows/macOS/Linux onde roda o Anki Desktop

@@ -275,7 +275,7 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - **FR-002**: O sistema MUST emitir uma sessão autenticada para usuários com credenciais válidas, para acesso a áreas restritas.
 - **FR-003**: O sistema MUST oferecer recuperação de senha por um canal seguro.
 - **FR-004**: O sistema MUST permitir, de forma opcional durante o cadastro, informar carreira alvo e banca/edital de interesse para uso em recomendações.
-- **FR-005**: O sistema MUST solicitar dois consentimentos explícitos, separados e desmarcados por padrão no cadastro — recebimento de e-mails de novidades e uso de dados anonimizados em pesquisa — e permitir alterá-los a qualquer momento com efeito imediato.
+- **FR-005**: O sistema MUST solicitar dois consentimentos explícitos, separados e desmarcados por padrão no cadastro — recebimento de e-mails de novidades e uso de dados anonimizados em pesquisa. A alteração posterior desses consentimentos é coberta por FR-045.
 
 **Catálogo e assinatura**
 - **FR-006**: O sistema MUST exibir uma listagem paginada de decks com nome, matéria/tags, número de notas e número de assinantes.
@@ -331,7 +331,7 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - **FR-044**: O sistema MUST aplicar, na ausência de proteção configurada, o comportamento padrão de a versão da web sempre prevalecer.
 
 **Conta, privacidade e moderação de conteúdo**
-- **FR-045**: O sistema MUST permitir que o usuário revise e altere, a qualquer momento, os consentimentos dados no cadastro (e-mails de novidades e uso de dados em pesquisa), com efeito imediato.
+- **FR-045**: O sistema MUST permitir que o usuário revise e altere, a qualquer momento pela tela "Minha conta", os consentimentos dados no cadastro (e-mails de novidades e uso de dados em pesquisa), com efeito imediato.
 - **FR-046**: O sistema MUST agendar a exclusão definitiva da conta para 7 dias corridos após a solicitação, permitindo desistência nesse período; decorrido o prazo, dados pessoais são apagados e assinaturas/sugestões do usuário são anonimizadas.
 - **FR-047**: O sistema MUST permitir a exportação, sob solicitação, dos próprios dados do usuário (nome, e-mail, sugestões, comentários) em formato legível (JSON).
 - **FR-048**: O sistema MUST permitir denunciar qualquer comentário ou mensagem de discussão de sugestão, com motivo opcional em texto livre, registrando a denúncia como "pendente" vinculada ao conteúdo, ao autor da denúncia e ao autor do conteúdo.

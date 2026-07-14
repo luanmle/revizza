@@ -9,7 +9,7 @@ Implementation is underway (US1/US2 of the MVP spec are built; US3 partially). T
 - `PRD-AnkiHub-Brasil.md` — the product requirements document (in Portuguese) and the single source of truth for scope, user stories, and technical decisions.
 - `specs/001-ankihub-brasil-mvp/` — the active spec-kit feature (spec, plan, tasks, contracts, data model).
 - `.specify/` — a [spec-kit](https://github.com/github/spec-kit) (speckit) scaffold for spec-driven development (specify → plan → tasks → implement).
-- `.specify/memory/constitution.md` — **ratified** (v1.2.0): seven principles including create-only initial deck import followed by unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, and the ui-ux-pro-max→impeccable design pipeline. Check it before starting any work.
+- `.specify/memory/constitution.md` — **ratified** (v1.2.1): seven principles including create-only initial deck import followed by unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, and the ui-ux-pro-max→impeccable design pipeline. Check it before starting any work.
 - `backend/` (Django + DRF, pytest), `frontend/` (Next.js 16 + Tailwind 4 + shadcn/ui, Vitest/Playwright), `addon/` (Anki add-on, pytest) — see each subtree and `frontend/AGENTS.md` for local rules.
 
 ## Working with the spec-kit workflow
@@ -18,7 +18,7 @@ This project uses spec-kit slash commands (available as skills: `speckit-specify
 
 ## Product context (from the PRD)
 
-**Product:** "AnkiHub Brasil" — a web platform for Brazilian "concurseiro" (civil-service exam) students to collaboratively publish, discuss, and correct Anki flashcard decks, syncing changes back to each user's local Anki via a native add-on. Modeled closely on the real AnkiHub product's API/UX conventions (cursor pagination with `next`, trailing-slash routes, `AnkiHub_Protect::<field>` tag convention, bulk change suggestions).
+**Product:** "AnkiHub Brasil" — a web platform for Brazilian "concurseiro" (civil-service exam) students to collaboratively publish, discuss, and correct Anki flashcard decks, syncing changes back to each user's local Anki via a native add-on. Modeled closely on the real AnkiHub product's API/UX conventions (cursor pagination with `next`, trailing-slash routes, `AnkiHubBR_Protect::<Campo>` tag convention, bulk change suggestions).
 
 **Planned architecture** (see PRD §4.1–4.3):
 

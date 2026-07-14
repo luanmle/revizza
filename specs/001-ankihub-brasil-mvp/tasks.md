@@ -463,3 +463,11 @@ Com múltiplos desenvolvedores, após Foundational:
 - [X] T145 Configure an env-driven production email backend (console backend in dev) and make the report-removal admin action in `backend/apps/discussions/admin.py` resilient so a notification failure cannot abort the action mid-queryset after content deletion per FR-050 (partial)
 - [X] T146 Add an optional display name ("nome") to the User profile — registration/profile endpoints and screens, the JSON data export, and comment/suggestion author display in place of opaque ID prefixes per FR-047 / US7/AC1 / US5/AC3 (partial)
 - [X] T147 Decrement `Deck.note_count` when a deletion suggestion is accepted in `backend/apps/suggestions/decisions.py`, with one contract assertion keeping catalog counts accurate per FR-006 (partial)
+
+---
+
+## Phase 22: Convergence
+
+**Purpose**: Lacuna de cobertura detectada por /speckit-analyze em 2026-07-14 — SC-006 sem tarefa de validação; sem duplicar T101–T147
+
+- [ ] T148 Add a timed cadastro→primeiro-login validation (Playwright walkthrough em `frontend/tests/e2e/` ou passo cronometrado documentado em `quickstart.md`) provando o orçamento de menos de 2 minutos sem assistência externa per SC-006 (missing)
