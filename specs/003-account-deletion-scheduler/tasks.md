@@ -73,7 +73,7 @@ does not error or double-process.
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Provision the Heroku Scheduler add-on and daily job
+- [X] T004 [US1] Provision the Heroku Scheduler add-on and daily job
       (`python manage.py delete_expired_accounts`) per the steps in
       `specs/003-account-deletion-scheduler/quickstart.md` (ops action, not a
       code change — no `Procfile` entry needed per plan.md's Structure
