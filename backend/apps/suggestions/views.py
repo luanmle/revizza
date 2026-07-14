@@ -2,8 +2,9 @@
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_date
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
@@ -67,8 +68,42 @@ def _suggestion_for_subscriber(request, suggestion_id) -> Suggestion:
     return suggestion
 
 
+def _change_validation_error(deck, notes, validated) -> Response | None:
+    """Rejeita mudança vazia, com campo desconhecido ou no-op (FR-020, US4/AC4).
+
+    Em lote, basta uma nota-alvo divergir da proposta para a correção compartilhada
+    ser válida (FR-017).
+    """
+    fields = validated.get("proposed_field_values") or {}
+    tags = validated.get("proposed_tags") or []
+    if not fields and not tags:
+        return Response(
+            {"detail": "Proponha ao menos uma mudança de campo ou de tag."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    unknown = [f for f in fields if f not in deck.note_type.field_names]
+    if unknown:
+        return Response(
+            {"errors": {"proposed_field_values": [f"Campos desconhecidos: {', '.join(unknown)}."]}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    is_noop = all(
+        all(note.field_values.get(f) == v for f, v in fields.items())
+        and set(tags) <= set(note.tags)
+        for note in notes
+    )
+    if is_noop:
+        return Response(
+            {"detail": "A sugestão não altera nada nas notas selecionadas."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
 def _create_change_suggestion(request, deck, notes, validated) -> Response:
     validated.pop("note_ids", None)
+    if error := _change_validation_error(deck, notes, validated):
+        return error
     with transaction.atomic():
         suggestion = Suggestion.objects.create(
             type=Suggestion.Type.CHANGE,
@@ -211,7 +246,23 @@ class DeckSuggestionListView(generics.ListAPIView):
         if not _subscriber_or_none(self.request.user, deck):
             raise PermissionDenied("Assine o deck para acessar as sugestões.")
 
-        qs = Suggestion.objects.filter(deck=deck).prefetch_related("target_notes")
+        qs = (
+            Suggestion.objects.filter(deck=deck)
+            .prefetch_related("target_notes")
+            # FR-054: contagens no annotate — sem query por sugestão na lista
+            .annotate(
+                likes=Count(
+                    "votes",
+                    filter=Q(votes__value=SuggestionVote.Value.LIKE),
+                    distinct=True,
+                ),
+                dislikes=Count(
+                    "votes",
+                    filter=Q(votes__value=SuggestionVote.Value.DISLIKE),
+                    distinct=True,
+                ),
+            )
+        )
         params = self.request.query_params
         for param, lookup in [
             ("type", "type"),
@@ -219,16 +270,24 @@ class DeckSuggestionListView(generics.ListAPIView):
             ("author", "author_id"),
             ("note_id", "target_notes__note_id"),
             ("created_after", "created_at__gte"),
-            ("created_before", "created_at__lte"),
         ]:
             if params.get(param):
                 qs = qs.filter(**{lookup: params[param]})
 
+        if created_before := params.get("created_before"):
+            # data sem hora inclui o dia inteiro (FR-022, US5/AC2)
+            if parse_date(created_before) and len(created_before) == 10:
+                qs = qs.filter(created_at__date__lte=created_before)
+            else:
+                qs = qs.filter(created_at__lte=created_before)
+
         submission = params.get("submission")
         if submission == "individual":
-            qs = qs.annotate(target_count=Count("target_notes")).filter(target_count=1)
+            qs = qs.annotate(target_count=Count("target_notes", distinct=True)).filter(
+                target_count=1
+            )
         elif submission == "bulk":
-            qs = qs.annotate(target_count=Count("target_notes")).filter(
+            qs = qs.annotate(target_count=Count("target_notes", distinct=True)).filter(
                 target_count__gt=1
             )
         return qs.distinct()
@@ -248,6 +307,12 @@ class SuggestionVoteView(APIView):
 
     def post(self, request, suggestion_id):
         suggestion = _suggestion_for_subscriber(request, suggestion_id)
+        if suggestion.author_id == request.user.id:
+            # FR-023: o sinal é de terceiros — autor não vota na própria sugestão
+            return Response(
+                {"detail": "Você não pode votar na própria sugestão."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = SuggestionVoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _, created = SuggestionVote.objects.update_or_create(

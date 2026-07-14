@@ -103,3 +103,90 @@ def test_requires_authentication(api_client, make_note):
     response = api_client.post(_url(note), PAYLOAD, format="json")
 
     assert response.status_code == 401
+
+
+# --- Validação semântica no servidor (FR-020, US4/AC4 — T134) ---
+
+
+def test_suggestion_without_fields_or_tags_is_rejected(
+    auth_client, make_note, subscribe
+):
+    note = make_note()
+    subscribe(note.deck)
+    payload = {k: v for k, v in PAYLOAD.items() if k != "proposed_field_values"}
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 400
+    assert Suggestion.objects.count() == 0
+
+
+def test_unknown_field_is_rejected(auth_client, make_note, subscribe):
+    note = make_note()
+    subscribe(note.deck)
+    payload = {**PAYLOAD, "proposed_field_values": {"Inexistente": "x"}}
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 400
+    assert Suggestion.objects.count() == 0
+
+
+def test_noop_suggestion_is_rejected(auth_client, make_note, subscribe):
+    """Proposta idêntica ao conteúdo atual não cria sugestão."""
+    note = make_note()
+    subscribe(note.deck)
+    payload = {
+        **PAYLOAD,
+        "proposed_field_values": dict(note.field_values),
+    }
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 400
+    assert Suggestion.objects.count() == 0
+
+
+# --- Tags propostas (FR-013 Nova tag/Tag atualizada — T125) ---
+
+
+def test_tags_only_suggestion_is_persisted(auth_client, make_note, subscribe):
+    note = make_note()
+    subscribe(note.deck)
+    payload = {
+        "change_category": "nova_tag",
+        "justification": "Padronizar a tag da matéria.",
+        "tags": [" lei-14133 ", "lei-14133", "licitação"],
+    }
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["tags"] == ["lei-14133", "licitação"]  # trim + dedupe
+    suggestion = Suggestion.objects.get(pk=body["id"])
+    assert suggestion.proposed_tags == ["lei-14133", "licitação"]
+
+
+def test_blank_tag_is_rejected(auth_client, make_note, subscribe):
+    note = make_note()
+    subscribe(note.deck)
+    payload = {**PAYLOAD, "tags": ["ok", "  "]}
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 400
+
+
+def test_noop_tag_suggestion_is_rejected(auth_client, make_note, subscribe):
+    note = make_note(tags=["lei-14133"])
+    subscribe(note.deck)
+    payload = {
+        "change_category": "nova_tag",
+        "justification": "Tag já presente.",
+        "tags": ["lei-14133"],
+    }
+
+    response = auth_client.post(_url(note), payload, format="json")
+
+    assert response.status_code == 400

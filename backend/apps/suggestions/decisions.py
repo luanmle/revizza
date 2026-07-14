@@ -29,14 +29,19 @@ class SuggestionDecisionView(APIView):
                 {"detail": "Apenas moderadores ativos do deck podem decidir sugestões."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if suggestion.status != Suggestion.Status.PENDING:
-            # ponytail: checagem sem lock de linha — select_for_update se houver
-            # decisão concorrente real em produção
-            return Response(
-                {"detail": "Sugestão já decidida — decisão é terminal (FR-027)."},
-                status=status.HTTP_409_CONFLICT,
-            )
         with transaction.atomic():
+            # lock + recheck dentro da transação: decisões concorrentes serializam
+            # e a segunda vê o status terminal (FR-027, US5/AC9)
+            suggestion = (
+                Suggestion.objects.select_for_update()
+                .select_related("deck")
+                .get(pk=suggestion.pk)
+            )
+            if suggestion.status != Suggestion.Status.PENDING:
+                return Response(
+                    {"detail": "Sugestão já decidida — decisão é terminal (FR-027)."},
+                    status=status.HTTP_409_CONFLICT,
+                )
             self.decide(request, suggestion)
             suggestion.decided_by = request.user
             suggestion.save()
@@ -56,14 +61,27 @@ class SuggestionAcceptView(SuggestionDecisionView):
                     **note.field_values,
                     **(suggestion.proposed_field_values or {}),
                 }
+                # ponytail: tags propostas só acrescentam (FR-013 Nova tag/Tag
+                # atualizada); remoção de tag vira sugestão própria se surgir demanda
+                note.tags = list(
+                    dict.fromkeys([*note.tags, *(suggestion.proposed_tags or [])])
+                )
                 # avançar `mod` = entrar no delta de sync de todos os assinantes (FR-026)
                 note.mod = now
                 note.save()
         elif suggestion.type == Suggestion.Type.DELETION:
+            freshly_deleted = 0
             for note in notes:
+                if note.deleted_at is None:
+                    freshly_deleted += 1
                 note.deleted_at = now
                 note.mod = now
                 note.save()
+            if freshly_deleted:
+                # FR-006: contagem do catálogo acompanha a exclusão aceita
+                suggestion.deck.__class__.objects.filter(
+                    pk=suggestion.deck_id, note_count__gte=freshly_deleted
+                ).update(note_count=F("note_count") - freshly_deleted)
         elif suggestion.type == Suggestion.Type.NEW_NOTE:
             note = Note.objects.create(
                 deck=suggestion.deck,

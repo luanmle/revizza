@@ -17,6 +17,18 @@ def empty_field_names(field_values: dict[str, str] | None) -> list[str]:
     ]
 
 
+def _note_ids(suggestion) -> list[str]:
+    # itera a relação (usa o prefetch da view) em vez de values_list, que re-consulta
+    return [str(target.note_id) for target in suggestion.target_notes.all()]
+
+
+def _clean_tags(value: list[str]) -> list[str]:
+    tags = [tag.strip() for tag in value]
+    if any(not tag for tag in tags):
+        raise serializers.ValidationError("Tags não podem ser vazias.")
+    return list(dict.fromkeys(tags))
+
+
 class ChangeSuggestionSerializer(serializers.ModelSerializer):
     """Entrada/saída da sugestão de mudança (FR-013 a FR-016)."""
 
@@ -24,6 +36,13 @@ class ChangeSuggestionSerializer(serializers.ModelSerializer):
     change_category = serializers.ChoiceField(choices=Suggestion.ChangeCategory.choices)
     proposed_field_values = serializers.DictField(
         child=serializers.CharField(allow_blank=True), required=False
+    )
+    # FR-013 (Nova tag/Tag atualizada): tags propostas junto com (ou no lugar de) campos
+    tags = serializers.ListField(
+        source="proposed_tags",
+        child=serializers.CharField(max_length=100),
+        required=False,
+        default=list,
     )
     note_ids = serializers.SerializerMethodField()
 
@@ -37,6 +56,7 @@ class ChangeSuggestionSerializer(serializers.ModelSerializer):
             "change_category",
             "justification",
             "proposed_field_values",
+            "tags",
             "note_ids",
             "created_at",
         ]
@@ -46,11 +66,11 @@ class ChangeSuggestionSerializer(serializers.ModelSerializer):
         # FR-015: nunca confiar no client — todo HTML passa pelo nh3 antes de persistir
         return sanitize_field_values(value)
 
+    def validate_tags(self, value):
+        return _clean_tags(value)
+
     def get_note_ids(self, suggestion) -> list[str]:
-        return [
-            str(note_id)
-            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
-        ]
+        return _note_ids(suggestion)
 
 
 class BulkChangeSuggestionSerializer(ChangeSuggestionSerializer):
@@ -93,10 +113,7 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
         return sanitize_field_values(value)
 
     def validate_tags(self, value):
-        tags = [tag.strip() for tag in value]
-        if any(not tag for tag in tags):
-            raise serializers.ValidationError("Tags não podem ser vazias.")
-        return list(dict.fromkeys(tags))
+        return _clean_tags(value)
 
     def validate(self, attrs):
         values = attrs["proposed_field_values"]
@@ -115,10 +132,7 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_note_ids(self, suggestion) -> list[str]:
-        return [
-            str(note_id)
-            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
-        ]
+        return _note_ids(suggestion)
 
     def get_empty_fields(self, suggestion) -> list[str]:
         return empty_field_names(suggestion.proposed_field_values)
@@ -141,17 +155,14 @@ class DeletionSuggestionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "type", "deck", "status", "created_at"]
 
     def get_note_ids(self, suggestion) -> list[str]:
-        return [
-            str(note_id)
-            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
-        ]
+        return _note_ids(suggestion)
 
 
 class SuggestionDetailSerializer(serializers.ModelSerializer):
     """Saída da lista/detalhe da tela de Community Suggestions (FR-020 a FR-022)."""
 
     note_ids = serializers.SerializerMethodField()
-    # ponytail: count por instância — trocar por annotate se a lista pesar
+    # counts vêm do annotate da lista (FR-054); fallback consulta por instância (detalhe)
     likes_count = serializers.SerializerMethodField()
     dislikes_count = serializers.SerializerMethodField()
     tags = serializers.ListField(source="proposed_tags", read_only=True)
@@ -178,15 +189,18 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_note_ids(self, suggestion) -> list[str]:
-        return [
-            str(note_id)
-            for note_id in suggestion.target_notes.values_list("note_id", flat=True)
-        ]
+        return _note_ids(suggestion)
 
     def get_likes_count(self, suggestion) -> int:
+        annotated = getattr(suggestion, "likes", None)
+        if annotated is not None:
+            return annotated
         return suggestion.votes.filter(value=SuggestionVote.Value.LIKE).count()
 
     def get_dislikes_count(self, suggestion) -> int:
+        annotated = getattr(suggestion, "dislikes", None)
+        if annotated is not None:
+            return annotated
         return suggestion.votes.filter(value=SuggestionVote.Value.DISLIKE).count()
 
     def get_empty_fields(self, suggestion) -> list[str]:

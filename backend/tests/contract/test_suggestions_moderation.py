@@ -17,9 +17,11 @@ def deck(make_deck, subscribe):
 
 
 @pytest.fixture
-def suggestion(deck, make_note, make_suggestion):
+def suggestion(deck, make_note, make_suggestion, make_user):
+    # autora distinta do `user` autenticado: voto é sinal de terceiros (FR-023)
     return make_suggestion(
         notes=[make_note(deck=deck)],
+        author=make_user("autora@example.com"),
         proposed_field_values={"Verso": "Resposta corrigida"},
     )
 
@@ -99,6 +101,18 @@ def test_vote_requires_subscription(suggestion, make_user):
     )
 
     assert response.status_code == 403
+
+
+def test_author_cannot_vote_own_suggestion(deck, make_note, make_suggestion, user):
+    """FR-023/US5/AC4: curtida é de terceiros — autor não vota (T124)."""
+    own = make_suggestion(notes=[make_note(deck=deck)], author=user)
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(_votes_url(own), {"value": "like"}, format="json")
+
+    assert response.status_code == 403
+    assert SuggestionVote.objects.count() == 0
 
 
 # --- Thread da sugestão (FR-024) ---
@@ -253,3 +267,63 @@ def test_non_moderator_cannot_reject(auth_client, suggestion):
     response = auth_client.post(f"/api/v1/suggestions/{suggestion.id}/reject/")
 
     assert response.status_code == 403
+
+
+# --- Decisão terminal sob concorrência (FR-027, US5/AC9 — T135) ---
+
+
+def test_second_decision_cannot_overwrite_terminal_status(
+    mod_client, moderator, suggestion
+):
+    accept = mod_client.post(f"/api/v1/suggestions/{suggestion.id}/accept/")
+    reject = mod_client.post(
+        f"/api/v1/suggestions/{suggestion.id}/reject/",
+        {"rejection_reason": "tarde demais"},
+        format="json",
+    )
+
+    assert accept.status_code == 200
+    assert reject.status_code == 409
+    suggestion.refresh_from_db()
+    assert suggestion.status == "accepted"
+    assert suggestion.rejection_reason is None
+    assert suggestion.decided_by == moderator
+
+
+# --- Tags propostas aplicadas no aceite (FR-013/FR-026 — T125) ---
+
+
+def test_accept_change_applies_proposed_tags(
+    mod_client, deck, make_note, make_suggestion
+):
+    note = make_note(deck=deck, tags=["existente"])
+    suggestion = make_suggestion(
+        notes=[note],
+        proposed_field_values={},
+        proposed_tags=["lei-14133", "existente"],
+    )
+
+    response = mod_client.post(f"/api/v1/suggestions/{suggestion.id}/accept/")
+
+    assert response.status_code == 200
+    note.refresh_from_db()
+    assert note.tags == ["existente", "lei-14133"]  # união sem duplicar
+
+
+# --- Contagem do catálogo após exclusão aceita (FR-006 — T147) ---
+
+
+def test_accept_deletion_decrements_deck_note_count(
+    mod_client, deck, make_note, make_suggestion
+):
+    from apps.catalog.models import Deck
+
+    note = make_note(deck=deck)
+    Deck.objects.filter(pk=deck.pk).update(note_count=5)
+    suggestion = make_suggestion(notes=[note], type=Suggestion.Type.DELETION)
+
+    response = mod_client.post(f"/api/v1/suggestions/{suggestion.id}/accept/")
+
+    assert response.status_code == 200
+    deck.refresh_from_db()
+    assert deck.note_count == 4

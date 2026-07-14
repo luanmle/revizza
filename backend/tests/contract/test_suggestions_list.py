@@ -183,3 +183,46 @@ def test_detail_requires_subscription(
     response = auth_client.get(f"/api/v1/suggestions/{suggestion.id}/")
 
     assert response.status_code == 403
+
+
+def test_created_before_date_includes_whole_day(
+    auth_client, deck, make_note, make_suggestion
+):
+    """FR-022/US5/AC2: data sem hora cobre o dia inteiro (T138)."""
+    suggestion = make_suggestion(notes=[make_note(deck=deck)])  # criada agora
+    today = timezone.now().date().isoformat()
+
+    response = auth_client.get(_url(deck), {"created_before": today})
+
+    assert _ids(response) == {str(suggestion.id)}
+
+
+def test_list_query_count_is_bounded(
+    auth_client,
+    deck,
+    make_note,
+    make_suggestion,
+    make_user,
+    django_assert_max_num_queries,
+):
+    """FR-054: sem query por sugestão — contagens via annotate (T140)."""
+    from apps.suggestions.models import SuggestionVote
+
+    voter = make_user("votante@example.com")
+    for _ in range(3):
+        suggestion = make_suggestion(
+            notes=[make_note(deck=deck), make_note(deck=deck)]
+        )
+        SuggestionVote.objects.create(
+            suggestion=suggestion, user=voter, value=SuggestionVote.Value.LIKE
+        )
+
+    with django_assert_max_num_queries(6):
+        response = auth_client.get(_url(deck))
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 3
+    assert all(item["likes_count"] == 1 for item in results)
+    assert all(item["dislikes_count"] == 0 for item in results)
+    assert all(len(item["note_ids"]) == 2 for item in results)

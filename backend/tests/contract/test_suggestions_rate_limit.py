@@ -21,7 +21,7 @@ def test_suggestion_submission_limit_is_shared_across_endpoints(
         {
             "change_category": "erro_conteudo",
             "justification": "Correção necessária.",
-            "proposed_fields": {"Frente": "Pergunta corrigida"},
+            "proposed_field_values": {"Frente": "Pergunta corrigida"},
         },
         format="json",
     )
