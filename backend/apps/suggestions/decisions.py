@@ -89,7 +89,7 @@ class SuggestionAcceptView(SuggestionDecisionView):
         elif suggestion.type == Suggestion.Type.NEW_NOTE:
             note = Note.objects.create(
                 deck=suggestion.deck,
-                note_type=suggestion.deck.note_type,
+                note_type=suggestion.note_type,
                 field_values=suggestion.proposed_field_values,
                 tags=suggestion.proposed_tags,
                 guid=uuid.uuid4().hex,

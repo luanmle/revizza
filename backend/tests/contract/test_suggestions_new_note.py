@@ -9,8 +9,9 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def deck(make_deck, subscribe):
-    deck = make_deck()
+def deck(make_note, subscribe):
+    # nota dá ao deck exatamente um tipo, resolvido automaticamente na sugestão (T010)
+    deck = make_note(guid="__seed__").deck
     subscribe(deck)
     return deck
 
@@ -112,7 +113,7 @@ def test_accepting_new_note_creates_official_note(
     accepted = auth_client.post(f"/api/v1/suggestions/{created.json()['id']}/accept/")
 
     assert accepted.status_code == 200
-    note = Note.objects.get(deck=deck)
+    note = Note.objects.exclude(guid="__seed__").get(deck=deck)
     assert note.field_values == PAYLOAD["proposed_field_values"]
     assert note.tags == PAYLOAD["tags"]
     deck.refresh_from_db()

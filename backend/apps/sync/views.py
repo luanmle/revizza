@@ -12,6 +12,7 @@ from django.utils.decorators import method_decorator
 from django_ratelimit.core import is_ratelimited
 from django_ratelimit.decorators import ratelimit
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -90,12 +91,18 @@ def _note_payload(note: Note) -> dict:
 
 
 def _deck_payload(deck: Deck, notes) -> dict:
-    note_items = [_note_payload(n) for n in notes]
+    # dedup por tipo a partir das notas já carregadas (select_related nos call sites),
+    # sem query extra: deck multi-tipo emite um note_type por tipo presente (T014)
+    seen: dict = {}
+    note_items = []
+    for note in notes:
+        note_items.append(_note_payload(note))
+        seen.setdefault(note.note_type_id, note.note_type)
     return {
         "deck_id": str(deck.id),
         "deck_name": deck.name,
         # ordem de aplicação fixa no add-on: tipos de nota → notas → subdecks (FR-034)
-        "note_types": [_note_type_payload(deck.note_type)],
+        "note_types": [_note_type_payload(nt) for nt in seen.values()],
         "notes": note_items,
         "subdecks": sorted(
             {n["anki_deck_path"] for n in note_items if n["anki_deck_path"]}
@@ -147,8 +154,12 @@ class DeltaView(_SubscriberSyncView):
                 # datetime.UTC: django.utils.timezone.utc foi removido no Django 5
                 since = since.replace(tzinfo=UTC)
 
-        structure_changed_at = deck.note_type.structure_changed_at
-        if since and structure_changed_at and structure_changed_at > since:
+        # qualquer tipo de nota do deck que mudou de estrutura após `since` força
+        # full resync (research.md Decisão 3) — deck pode ter múltiplos tipos
+        structural_change = bool(since) and NoteType.objects.filter(
+            notes__deck=deck, structure_changed_at__gt=since
+        ).exists()
+        if structural_change:
             # FR-035: mudança estrutural não reconciliável via delta parcial
             if not request.headers.get("X-Sync-Run-ID"):
                 cache.set(
@@ -168,7 +179,7 @@ class DeltaView(_SubscriberSyncView):
                 }
             )
 
-        notes = deck.notes.all()
+        notes = deck.notes.select_related("note_type")
         if since:
             notes = notes.filter(mod__gt=since)
         payload = _deck_payload(deck, notes)
@@ -182,7 +193,14 @@ class FullView(_SubscriberSyncView):
     allow_legacy_fallback = True
 
     def sync(self, request, deck):
-        return Response(_deck_payload(deck, deck.notes.filter(deleted_at__isnull=True)))
+        return Response(
+            _deck_payload(
+                deck,
+                deck.notes.select_related("note_type").filter(
+                    deleted_at__isnull=True
+                ),
+            )
+        )
 
 
 class MediaDownloadView(APIView):
@@ -237,10 +255,14 @@ class PublishView(APIView):
         if limited:
             return limited
         data = request.data
-        note_type_data = data.get("note_type") or {}
-        if not data.get("name") or not note_type_data.get("field_names"):
+        note_types_data = data.get("note_types") or []
+        if (
+            not data.get("name")
+            or not note_types_data
+            or any(not nt.get("field_names") for nt in note_types_data)
+        ):
             return Response(
-                {"detail": "Payload requer name e note_type.field_names."},
+                {"detail": "Payload requer name e note_types[] com field_names."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -257,26 +279,34 @@ class PublishView(APIView):
 
         now = timezone.now()
         with transaction.atomic():
-            note_type = NoteType.objects.create(
-                name=note_type_data.get("name", "Básico"),
-                field_names=note_type_data["field_names"],
-                templates=note_type_data.get("templates", []),
-                css=note_type_data.get("css", ""),
-            )
+            note_types = [
+                NoteType.objects.create(
+                    name=nt.get("name", "Básico"),
+                    field_names=nt["field_names"],
+                    templates=nt.get("templates", []),
+                    css=nt.get("css", ""),
+                )
+                for nt in note_types_data
+            ]
             deck = Deck.objects.create(
                 id=deck_id,
                 name=data["name"],
                 description=data.get("description", ""),
                 subject_tags=data.get("subject_tags", []),
-                note_type=note_type,
             )
             DeckModerator.objects.create(deck=deck, user=request.user, status="active")
 
             for item in data.get("notes", []):
+                index = item.get("note_type_index", 0)
+                if not 0 <= index < len(note_types):
+                    # ValidationError dentro do atomic() reverte tudo (FR-004 atômico)
+                    raise ValidationError(
+                        {"detail": "note_type_index fora do intervalo de note_types."}
+                    )
                 fields = sanitize_field_values(item.get("field_values", {}))  # FR-015
                 Note.objects.create(
                     deck=deck,
-                    note_type=note_type,
+                    note_type=note_types[index],
                     guid=item["guid"],
                     field_values=fields,
                     tags=item.get("tags", []),

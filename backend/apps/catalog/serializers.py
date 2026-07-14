@@ -1,3 +1,4 @@
+from django.db.models import Count
 from rest_framework import serializers
 
 from .models import Deck, DeckModerator, Subscription
@@ -21,14 +22,14 @@ class DeckDetailSerializer(DeckSerializer):
     moderator_count = serializers.SerializerMethodField()
     is_moderator = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
-    note_type = serializers.SerializerMethodField()
+    note_types = serializers.SerializerMethodField()
 
     class Meta(DeckSerializer.Meta):
         fields = DeckSerializer.Meta.fields + [
             "moderator_count",
             "is_moderator",
             "is_subscribed",
-            "note_type",
+            "note_types",
         ]
 
     def get_moderator_count(self, deck):
@@ -44,12 +45,24 @@ class DeckDetailSerializer(DeckSerializer):
         user = self.context["request"].user
         return deck.subscriptions.filter(user=user).exists()
 
-    def get_note_type(self, deck):
-        return {
-            "id": str(deck.note_type_id),
-            "name": deck.note_type.name,
-            "field_names": deck.note_type.field_names,
-        }
+    def get_note_types(self, deck):
+        # tipos derivados das notas vivas do deck, com contagem por tipo, em uma única
+        # query agregada — sem N+1 (research.md Decisão 6)
+        counts = (
+            deck.notes.filter(deleted_at__isnull=True)
+            .values("note_type", "note_type__name", "note_type__field_names")
+            .annotate(note_count=Count("id"))
+            .order_by("note_type__name")
+        )
+        return [
+            {
+                "id": str(row["note_type"]),
+                "name": row["note_type__name"],
+                "field_names": row["note_type__field_names"],
+                "note_count": row["note_count"],
+            }
+            for row in counts
+        ]
 
 
 class DeckSubscribedSerializer(DeckSerializer):

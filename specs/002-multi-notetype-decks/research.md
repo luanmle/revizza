@@ -75,8 +75,12 @@ rejeitado como otimização prematura (YAGNI); volume de decks/tipos de nota no 
   mesma proposta de campos só faz sentido semântico aplicada a notas estruturalmente iguais; decks
   multi-tipo simplesmente não podiam colidir nisso antes porque só existia um tipo de nota por deck.
 - **Sugestão de nota nova** (`new-note`): passa a exigir a escolha de **um dos tipos de nota já
-  existentes no deck** (novo campo `note_type` na sugestão); criar um tipo de nota inteiramente novo
-  a partir de uma sugestão fica fora de escopo (seria uma superfície de moderação nova, não pedida).
+  existentes no deck** (novo campo `note_type` na sugestão), **exceto** quando o deck tem exatamente
+  um tipo de nota — nesse caso o campo é opcional e o backend resolve automaticamente para o único
+  tipo existente, preservando FR-010/SC-003 (zero mudança de comportamento observável em decks já
+  publicados com um único tipo). `400` se omitido em deck com 2+ tipos, ou se o valor enviado não
+  pertencer ao deck. Criar um tipo de nota inteiramente novo a partir de uma sugestão fica fora de
+  escopo (seria uma superfície de moderação nova, não pedida).
 
 **Rationale**: proteção de campo é uma preferência por **nome de campo** configurada uma vez por
 usuário/deck (`backend/apps/protection/models.py`, sem referência a tipo de nota) — manter a união é a

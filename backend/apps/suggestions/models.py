@@ -35,6 +35,15 @@ class Suggestion(BaseModel):
         blank=True,
         related_name="suggestions",
     )
+    # tipo de nota da sugestão new_note — resolvido no serializer, usado ao aceitar
+    # (decisions.py); nullable pois só new_note o preenche (data-model.md)
+    note_type = models.ForeignKey(
+        "notes.NoteType",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     # obrigatório apenas quando type=change (FR-013) — validado no serializer
     change_category = models.CharField(
         max_length=20, choices=ChangeCategory.choices, null=True, blank=True

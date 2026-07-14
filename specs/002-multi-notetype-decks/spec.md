@@ -103,6 +103,10 @@ na confirmação pós-publicação do add-on), uma contagem de notas por tipo de
 - Ressincronização completa por mudança estrutural (FR-035 do spec MVP) continua se aplicando por tipo
   de nota individual — uma mudança de estrutura em um dos tipos de nota do deck não deve exigir
   ressincronizar tipos de nota que não mudaram.
+- O que acontece se um usuário tentar propor uma sugestão de mudança em lote (bulk) selecionando notas
+  de **mais de um** tipo de nota do mesmo deck multi-tipo? O sistema deve recusar essa sugestão em
+  lote — uma única proposta de campos só faz sentido aplicada a notas estruturalmente iguais; o
+  usuário precisa dividir a sugestão por tipo de nota.
 
 ## Requirements *(mandatory)*
 
@@ -142,6 +146,9 @@ na confirmação pós-publicação do add-on), uma contagem de notas por tipo de
 - **Note**: já se relaciona com um `NoteType` próprio (independente do deck); esta funcionalidade torna
   essa relação individual a fonte da verdade para validação e sincronização, em vez de um tipo de nota
   único herdado do deck.
+- **Suggestion**: uma sugestão de nota nova (tipo `new_note`) passa a registrar explicitamente qual dos
+  tipos de nota existentes do deck a nova nota deve usar — antes implícito (o único tipo do deck),
+  agora uma escolha obrigatória do autor da sugestão dentre os tipos de nota já presentes no deck.
 
 ## Success Criteria *(mandatory)*
 
@@ -172,3 +179,7 @@ na confirmação pós-publicação do add-on), uma contagem de notas por tipo de
 - Suporte a múltiplos tipos de nota por deck é o item explicitamente citado como extensão pós-MVP em
   `specs/001-ankihub-brasil-mvp/data-model.md` ("pode ser estendido a N no pós-MVP"); esta
   funcionalidade é essa extensão, não uma mudança de escopo não planejada.
+- A sugestão de nota nova (`new-note`) passa a exigir a escolha de um tipo de nota apenas quando o
+  deck tem 2 ou mais tipos; em um deck de tipo único, a escolha é resolvida automaticamente pelo
+  backend sem exigir o campo no payload — garante que FR-010/SC-003 (zero mudança de comportamento
+  observável para decks já publicados) valham também para este endpoint específico.

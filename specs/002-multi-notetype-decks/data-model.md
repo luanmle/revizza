@@ -29,7 +29,7 @@ validação/sync, em vez de um atalho via `deck.note_type`.
 
 | Campo | Antes | Depois |
 |---|---|---|
-| `note_type` | Não existia | **Novo**: FK nullable → NoteType, `on_delete=PROTECT`. Preenchida apenas quando `type=new_note`; deve ser um dos tipos de nota já presentes no deck da sugestão (validado na criação — ver `research.md` → Decisão 4). Nula para `type=change`/`deletion`, onde o tipo de nota é sempre o da(s) nota(s)-alvo já existente(s). |
+| `note_type` | Não existia | **Novo**: FK nullable → NoteType, `on_delete=PROTECT`. Preenchida sempre que `type=new_note` é criada — obrigatória no payload apenas quando o deck tem 2+ tipos de nota; se o deck tem exatamente um, o backend resolve para esse único tipo mesmo sem o campo no payload (mantém FR-010/SC-003 para decks de tipo único). Nula para `type=change`/`deletion`, onde o tipo de nota é sempre o da(s) nota(s)-alvo já existente(s). |
 
 **Migração**: adiciona coluna nullable — não requer backfill (sugestões `new_note` existentes, se
 houver, pertencem a decks que hoje só têm um tipo de nota; podem ficar com `note_type=null` sem quebrar

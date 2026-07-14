@@ -58,8 +58,8 @@ atual de `spec.md`, preservando a validação histórica acima.
 ## Requirement Clarity
 
 - [x] CHK004 O limite de submissão de sugestões em FR-052 está quantificado separadamente do intervalo de 10 segundos da sincronização? [Ambiguity, Spec §FR-032, §FR-052]
-- [ ] CHK005 A expressão “carga típica” define condições objetivas de concorrência, dispositivo e rede para o limite de 500ms? [Ambiguity, Spec §FR-054]
-- [ ] CHK006 A “renderização fiel” delimita os recursos de template/CSS do Anki cobertos e um critério objetivo de comparação? [Ambiguity, Spec §FR-011]
+- [x] CHK005 A expressão “carga típica” define condições objetivas de concorrência, dispositivo e rede para o limite de 500ms? [Ambiguity, Spec §FR-054]
+- [x] CHK006 A “renderização fiel” delimita os recursos de template/CSS do Anki cobertos e um critério objetivo de comparação? [Ambiguity, Spec §FR-011]
 
 ## Requirement Consistency
 
@@ -70,7 +70,7 @@ atual de `spec.md`, preservando a validação histórica acima.
 ## Acceptance Criteria Quality
 
 - [x] CHK010 Cada história possui teste independente e cenários de aceitação em formato Given/When/Then? [Acceptance Criteria, Spec §User Scenarios]
-- [ ] CHK011 SC-008 define método de medição, população observada e janela temporal para sustentar o termo “nenhuma sincronização reportada”? [Measurability, Spec §SC-008]
+- [x] CHK011 SC-008 define método de medição, população observada e janela temporal para sustentar o termo “nenhuma sincronização reportada”? [Measurability, Spec §SC-008]
 - [x] CHK012 As metas provisórias SC-001 a SC-004 são numéricas e estão identificadas como baselines ainda não validados? [Clarity, Assumption, Spec §SC-001–SC-004, §Assumptions]
 
 ## Scenario Coverage

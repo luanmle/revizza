@@ -16,9 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface DeckDetail {
   id: string;
   name: string;
-  note_type: {
+  note_types: {
     field_names: string[];
-  };
+  }[];
 }
 
 interface ProtectionConfig {
@@ -208,7 +208,9 @@ export default function ProtectionPage() {
       {deck.data && config.data && (
         <ProtectionForm
           deckId={id}
-          fieldNames={deck.data.note_type.field_names}
+          fieldNames={[
+            ...new Set(deck.data.note_types.flatMap((t) => t.field_names)),
+          ]}
           initial={config.data}
         />
       )}

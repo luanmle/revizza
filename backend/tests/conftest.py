@@ -43,23 +43,24 @@ def make_deck(note_type):
     def _make(**kwargs):
         kwargs.setdefault("name", "Deck Teste")
         kwargs.setdefault("subject_tags", [])
-        return Deck.objects.create(note_type=note_type, **kwargs)
+        return Deck.objects.create(**kwargs)
 
     return _make
 
 
 @pytest.fixture
-def make_note(make_deck):
+def make_note(make_deck, note_type):
     from django.utils import timezone
 
     from apps.notes.models import Note
 
     def _make(deck=None, **kwargs):
         deck = deck or make_deck()
+        kwargs.setdefault("note_type", note_type)
         kwargs.setdefault("guid", uuid.uuid4().hex)
         kwargs.setdefault("field_values", {"Frente": "Pergunta", "Verso": "Resposta"})
         kwargs.setdefault("mod", timezone.now())
-        return Note.objects.create(deck=deck, note_type=deck.note_type, **kwargs)
+        return Note.objects.create(deck=deck, **kwargs)
 
     return _make
 

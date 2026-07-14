@@ -3,6 +3,7 @@ from html import unescape
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
+from apps.notes.models import NoteType
 from apps.notes.sanitize import sanitize_field_values
 
 from .models import Suggestion, SuggestionVote
@@ -90,6 +91,10 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
         child=serializers.CharField(max_length=100),
         allow_empty=False,
     )
+    # obrigatório só quando o deck tem 2+ tipos; resolvido automaticamente se tem um só
+    note_type = serializers.PrimaryKeyRelatedField(
+        queryset=NoteType.objects.all(), required=False
+    )
     note_ids = serializers.SerializerMethodField()
     empty_fields = serializers.SerializerMethodField()
 
@@ -100,6 +105,7 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
             "type",
             "deck",
             "status",
+            "note_type",
             "justification",
             "proposed_field_values",
             "tags",
@@ -116,8 +122,10 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
         return _clean_tags(value)
 
     def validate(self, attrs):
+        note_type = self._resolve_note_type(attrs)
+        attrs["note_type"] = note_type
         values = attrs["proposed_field_values"]
-        expected = self.context["deck"].note_type.field_names
+        expected = note_type.field_names
         missing = [field for field in expected if field not in values]
         unknown = [field for field in values if field not in expected]
         if missing or unknown:
@@ -130,6 +138,27 @@ class NewNoteSuggestionSerializer(serializers.ModelSerializer):
                 {"proposed_field_values": " ".join(detail)}
             )
         return attrs
+
+    def _resolve_note_type(self, attrs):
+        """Escolhe o tipo de nota da sugestão: exigido se o deck tem 2+, auto se tem 1."""
+        deck = self.context["deck"]
+        deck_types = list(
+            NoteType.objects.filter(
+                notes__deck=deck, notes__deleted_at__isnull=True
+            ).distinct()
+        )
+        note_type = attrs.get("note_type")
+        if note_type is None:
+            if len(deck_types) == 1:
+                return deck_types[0]
+            raise serializers.ValidationError(
+                {"note_type": "Escolha o tipo de nota (o deck tem mais de um)."}
+            )
+        if deck_types and note_type not in deck_types:
+            raise serializers.ValidationError(
+                {"note_type": "Tipo de nota não pertence a este deck."}
+            )
+        return note_type
 
     def get_note_ids(self, suggestion) -> list[str]:
         return _note_ids(suggestion)

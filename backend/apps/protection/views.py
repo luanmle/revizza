@@ -14,7 +14,7 @@ class ProtectionMeView(APIView):
     """GET/PUT /decks/{id}/protection/me/ — configuração privada (FR-040)."""
 
     def get_deck(self, request, deck_id):
-        deck = get_object_or_404(Deck.objects.select_related("note_type"), pk=deck_id)
+        deck = get_object_or_404(Deck, pk=deck_id)
         _require_subscription(request.user, deck)
         return deck
 

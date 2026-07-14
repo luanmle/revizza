@@ -12,16 +12,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+
+interface NoteType {
+  id: string;
+  name: string;
+  field_names: string[];
+}
 
 interface DeckDetail {
   id: string;
   name: string;
-  note_type: {
-    name: string;
-    field_names: string[];
-  };
+  note_types: NoteType[];
 }
 
 function hasVisibleText(html: string): boolean {
@@ -48,13 +58,20 @@ export default function SuggestNewNotePage() {
   const [justification, setJustification] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [formError, setFormError] = useState("");
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
 
   const deck = useQuery<DeckDetail>({
     queryKey: ["deck", id],
     queryFn: () => api.get(`/decks/${id}/`),
     retry: false,
   });
-  const fieldNames = deck.data?.note_type.field_names ?? [];
+  const noteTypes = deck.data?.note_types ?? [];
+  // deck com um tipo resolve automático; com 2+ exige escolha (contracts/suggestions.md)
+  const selectedType =
+    noteTypes.length === 1
+      ? noteTypes[0]
+      : noteTypes.find((t) => t.id === selectedTypeId);
+  const fieldNames = selectedType?.field_names ?? [];
   const tags = tagsInput
     .split(",")
     .map((tag) => tag.trim())
@@ -66,6 +83,7 @@ export default function SuggestNewNotePage() {
   const submit = useMutation({
     mutationFn: () =>
       api.post(`/decks/${id}/suggestions/new-note/`, {
+        note_type: selectedType!.id,
         justification: justification.trim(),
         proposed_field_values: Object.fromEntries(
           fieldNames.map((field) => [field, fields[field] ?? ""]),
@@ -76,6 +94,7 @@ export default function SuggestNewNotePage() {
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!selectedType) return setFormError("Escolha o tipo de nota.");
     if (!justification.trim())
       return setFormError("A justificativa é obrigatória.");
     if (tags.length === 0) return setFormError("Informe pelo menos uma tag.");
@@ -159,9 +178,34 @@ export default function SuggestNewNotePage() {
 
       {deck.data && (
         <form className="flex flex-col gap-6" onSubmit={onSubmit}>
+          {noteTypes.length > 1 && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="note-type">Tipo de nota</Label>
+              <Select
+                value={selectedTypeId}
+                onValueChange={(value) => {
+                  setSelectedTypeId(value ?? "");
+                  setFields({});
+                }}
+              >
+                <SelectTrigger id="note-type" className="min-h-11">
+                  <SelectValue placeholder="Escolha o tipo de nota" />
+                </SelectTrigger>
+                <SelectContent>
+                  {noteTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {selectedType && (
           <fieldset className="flex flex-col gap-5">
             <legend className="mb-1 font-medium">
-              Campos · {deck.data.note_type.name}
+              Campos · {selectedType.name}
             </legend>
             {fieldNames.map((field) => {
               const empty = !hasVisibleText(fields[field] ?? "");
@@ -186,6 +230,7 @@ export default function SuggestNewNotePage() {
               );
             })}
           </fieldset>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-note-tags">Tags</Label>

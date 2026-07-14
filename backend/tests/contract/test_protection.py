@@ -11,8 +11,9 @@ def _url(deck):
 
 
 @pytest.fixture
-def deck(make_deck, subscribe):
-    deck = make_deck()
+def deck(make_note, subscribe):
+    # nota dá ao deck um tipo de nota do qual derivar os field_names (T007/Decisão 4)
+    deck = make_note().deck
     subscribe(deck)
     return deck
 
