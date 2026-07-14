@@ -142,6 +142,16 @@ RATELIMIT_PUBLISH_RATE = "10/h"  # T133: publish é evento único por deck
 # T133: generoso o bastante para o fan-out de mídia de um sync run legítimo
 RATELIMIT_MEDIA_RATE = "120/m"
 
+# Root logger sem handler tem lastResort (WARNING+), o que descartaria os logs de
+# auditoria INFO do job de deleção (research.md § registro auditável). Console
+# handler no root garante que INFO chegue ao stdout/stderr que o Heroku captura.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
+}
+
 # --- Sentry (T013): só inicializa se houver DSN configurado ---
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 if SENTRY_DSN:
