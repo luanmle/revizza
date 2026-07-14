@@ -17,8 +17,10 @@ import {
 
 function decisionError(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 409) return "Esta sugestão já foi decidida por outro moderador.";
-    if (error.status === 403) return "Apenas moderadores ativos do deck podem decidir.";
+    if (error.status === 409)
+      return "Esta sugestão já foi decidida por outro moderador.";
+    if (error.status === 403)
+      return "Apenas moderadores ativos do deck podem decidir.";
     const body = error.body as { detail?: string } | null;
     if (body?.detail) return body.detail;
   }
@@ -42,7 +44,9 @@ export default function SuggestionModerationControls({
   });
   const reject = useMutation({
     mutationFn: () =>
-      api.post(`/suggestions/${suggestionId}/reject/`, { rejection_reason: reason }),
+      api.post(`/suggestions/${suggestionId}/reject/`, {
+        rejection_reason: reason,
+      }),
     onSuccess: () => {
       setRejectOpen(false);
       onDecided();
@@ -79,12 +83,14 @@ export default function SuggestionModerationControls({
           <DialogHeader>
             <DialogTitle>Rejeitar sugestão</DialogTitle>
             <DialogDescription>
-              O motivo é opcional e fica visível ao autor. A decisão não pode ser
-              revertida pela interface.
+              O motivo é opcional e fica visível ao autor. A decisão não pode
+              ser revertida pela interface.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`reject-reason-${suggestionId}`}>Motivo (opcional)</Label>
+            <Label htmlFor={`reject-reason-${suggestionId}`}>
+              Motivo (opcional)
+            </Label>
             <Textarea
               id={`reject-reason-${suggestionId}`}
               value={reason}

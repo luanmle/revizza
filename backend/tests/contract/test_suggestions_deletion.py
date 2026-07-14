@@ -52,16 +52,12 @@ def test_accepted_deletion_enters_sync_delta(
 ):
     note = make_note()
     subscribe(note.deck)
-    created = auth_client.post(
-        _url(note), {"justification": "Remover."}, format="json"
-    )
+    created = auth_client.post(_url(note), {"justification": "Remover."}, format="json")
     moderator = make_user("moderadora@example.com")
     make_moderator(note.deck, moderator)
     auth_client.force_authenticate(user=moderator)
 
-    accepted = auth_client.post(
-        f"/api/v1/suggestions/{created.json()['id']}/accept/"
-    )
+    accepted = auth_client.post(f"/api/v1/suggestions/{created.json()['id']}/accept/")
 
     assert accepted.status_code == 200
     note.refresh_from_db()

@@ -4,7 +4,8 @@
  */
 import { supabase } from "./supabase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 const API_VERSION = "1";
 
 export class ApiError extends Error {
@@ -26,14 +27,21 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: await authHeaders(),
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new ApiError(response.status, await response.json().catch(() => null));
+    throw new ApiError(
+      response.status,
+      await response.json().catch(() => null),
+    );
   }
   if (response.status === 204) return undefined as T;
   return response.json();

@@ -29,9 +29,12 @@ def test_sign_in_uses_supabase_password_grant(monkeypatch):
 
     monkeypatch.setattr(auth.requests, "post", post)
 
-    assert auth.sign_in(
-        "https://project.supabase.co", "public-key", "aluno@example.com", "senha"
-    ) == session
+    assert (
+        auth.sign_in(
+            "https://project.supabase.co", "public-key", "aluno@example.com", "senha"
+        )
+        == session
+    )
     assert calls == [
         (
             "https://project.supabase.co/auth/v1/token",

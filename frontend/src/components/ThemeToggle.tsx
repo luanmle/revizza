@@ -11,7 +11,12 @@ export default function ThemeToggle() {
   }
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggle} aria-label="Alternar tema">
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggle}
+      aria-label="Alternar tema"
+    >
       <Sun className="size-4 dark:hidden" aria-hidden />
       <Moon className="hidden size-4 dark:block" aria-hidden />
     </Button>

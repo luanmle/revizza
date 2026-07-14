@@ -29,9 +29,7 @@ PAYLOAD = {
 }
 
 
-def test_create_new_note_suggestion_flags_empty_fields(
-    auth_client, user, deck
-):
+def test_create_new_note_suggestion_flags_empty_fields(auth_client, user, deck):
     response = auth_client.post(_url(deck), PAYLOAD, format="json")
 
     assert response.status_code == 201
@@ -52,9 +50,7 @@ def test_create_new_note_suggestion_flags_empty_fields(
     [("justification", ""), ("tags", [])],
 )
 def test_justification_and_tags_are_required(auth_client, deck, field, value):
-    response = auth_client.post(
-        _url(deck), {**PAYLOAD, field: value}, format="json"
-    )
+    response = auth_client.post(_url(deck), {**PAYLOAD, field: value}, format="json")
 
     assert response.status_code == 400
 
@@ -87,7 +83,7 @@ def test_new_note_html_is_sanitized(auth_client, deck):
         {
             **PAYLOAD,
             "proposed_field_values": {
-                "Frente": '<b>ok</b><script>alert(1)</script>',
+                "Frente": "<b>ok</b><script>alert(1)</script>",
                 "Verso": "Resposta",
             },
         },
@@ -113,9 +109,7 @@ def test_accepting_new_note_creates_official_note(
     make_moderator(deck, moderator)
     auth_client.force_authenticate(user=moderator)
 
-    accepted = auth_client.post(
-        f"/api/v1/suggestions/{created.json()['id']}/accept/"
-    )
+    accepted = auth_client.post(f"/api/v1/suggestions/{created.json()['id']}/accept/")
 
     assert accepted.status_code == 200
     note = Note.objects.get(deck=deck)

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -52,7 +53,9 @@ class PasswordResetView(APIView):
         email = request.data.get("email", "")
         if email:
             # 204 sempre — não revela se o e-mail existe
-            supabase_gateway.send_password_reset(email)
+            supabase_gateway.send_password_reset(
+                email, settings.PASSWORD_RESET_REDIRECT_URL
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

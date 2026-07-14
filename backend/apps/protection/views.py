@@ -14,9 +14,7 @@ class ProtectionMeView(APIView):
     """GET/PUT /decks/{id}/protection/me/ — configuração privada (FR-040)."""
 
     def get_deck(self, request, deck_id):
-        deck = get_object_or_404(
-            Deck.objects.select_related("note_type"), pk=deck_id
-        )
+        deck = get_object_or_404(Deck.objects.select_related("note_type"), pk=deck_id)
         _require_subscription(request.user, deck)
         return deck
 
@@ -43,14 +41,10 @@ class ProtectionMeView(APIView):
         fields = serializer.validated_data["fields"]
         tags = serializer.validated_data["tags"]
         with transaction.atomic():
-            ProtectedFieldConfig.objects.filter(
-                user=request.user, deck=deck
-            ).delete()
+            ProtectedFieldConfig.objects.filter(user=request.user, deck=deck).delete()
             ProtectedTagConfig.objects.filter(user=request.user, deck=deck).delete()
             ProtectedFieldConfig.objects.bulk_create(
-                ProtectedFieldConfig(
-                    user=request.user, deck=deck, field_name=field
-                )
+                ProtectedFieldConfig(user=request.user, deck=deck, field_name=field)
                 for field in fields
             )
             ProtectedTagConfig.objects.bulk_create(

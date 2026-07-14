@@ -31,9 +31,7 @@ def test_builds_create_only_payload_with_subdeck_and_media(col):
     assert payload["subject_tags"] == ["Direito"]
     assert payload["notes"][0]["anki_deck_path"] == "Penal"
     assert payload["notes"][0]["field_values"]["Front"].startswith("<img")
-    assert payload["media"] == [
-        {"filename": "figura.png", "content_hash": digest}
-    ]
+    assert payload["media"] == [{"filename": "figura.png", "content_hash": digest}]
     assert blobs[digest] == ("figura.png", media)
 
 

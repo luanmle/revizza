@@ -25,14 +25,17 @@ interface DeckDetail {
 }
 
 function hasVisibleText(html: string): boolean {
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;|&#160;/g, " ")
-    .trim().length > 0;
+  return (
+    html
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;|&#160;/g, " ")
+      .trim().length > 0
+  );
 }
 
 function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "Não foi possível enviar a sugestão.";
+  if (!(error instanceof ApiError))
+    return "Não foi possível enviar a sugestão.";
   if (error.status === 403) return "Assine o deck para sugerir uma nota nova.";
   if (error.status === 429)
     return "Você enviou sugestões demais. Aguarde um pouco e tente novamente.";
@@ -99,7 +102,8 @@ export default function SuggestNewNotePage() {
         <Alert>
           <AlertTitle>Nota nova sugerida</AlertTitle>
           <AlertDescription>
-            A proposta está pendente de moderação e aparece na aba “Notas novas”.{" "}
+            A proposta está pendente de moderação e aparece na aba “Notas
+            novas”.{" "}
             <Link
               href={`/decks/${id}/suggestions`}
               className="text-primary underline"
@@ -132,8 +136,8 @@ export default function SuggestNewNotePage() {
         Sugerir nota nova
       </h1>
       <p className="mb-6 max-w-[70ch] text-sm text-muted-foreground">
-        Preencha os campos do tipo de nota. Campos vazios são permitidos, mas ficam
-        sinalizados para a moderação.
+        Preencha os campos do tipo de nota. Campos vazios são permitidos, mas
+        ficam sinalizados para a moderação.
       </p>
 
       {deck.isPending && (
@@ -143,14 +147,15 @@ export default function SuggestNewNotePage() {
         </div>
       )}
 
-      {deck.isError && !(deck.error instanceof ApiError && deck.error.status === 401) && (
-        <Alert variant="destructive">
-          <AlertTitle>Não foi possível carregar o deck</AlertTitle>
-          <AlertDescription>
-            Tente novamente para obter os campos do tipo de nota.
-          </AlertDescription>
-        </Alert>
-      )}
+      {deck.isError &&
+        !(deck.error instanceof ApiError && deck.error.status === 401) && (
+          <Alert variant="destructive">
+            <AlertTitle>Não foi possível carregar o deck</AlertTitle>
+            <AlertDescription>
+              Tente novamente para obter os campos do tipo de nota.
+            </AlertDescription>
+          </Alert>
+        )}
 
       {deck.data && (
         <form className="flex flex-col gap-6" onSubmit={onSubmit}>
@@ -209,9 +214,13 @@ export default function SuggestNewNotePage() {
 
           {emptyFields.length > 0 && (
             <div className="flex gap-2 rounded-lg bg-warning/10 p-3 text-sm">
-              <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+              <CircleAlert
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-warning"
+              />
               <p>
-                Campos vazios sinalizados para revisão: {emptyFields.join(", ")}.
+                Campos vazios sinalizados para revisão: {emptyFields.join(", ")}
+                .
               </p>
             </div>
           )}
@@ -223,7 +232,11 @@ export default function SuggestNewNotePage() {
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" className="min-h-11" disabled={submit.isPending}>
+            <Button
+              type="submit"
+              className="min-h-11"
+              disabled={submit.isPending}
+            >
               {submit.isPending ? "Enviando…" : "Enviar sugestão"}
             </Button>
             <Button

@@ -77,15 +77,15 @@ def test_signed_media_upload_does_not_send_api_authorization(monkeypatch):
     )
     client = AnkiHubBrClient("https://api.example.com", token="secret")
 
-    client.upload_signed_media("https://storage.example/upload?token=signed", "a.png", b"png")
+    client.upload_signed_media(
+        "https://storage.example/upload?token=signed", "a.png", b"png"
+    )
 
     assert calls == [
         (
             "https://storage.example/upload?token=signed",
             {
-                "files": {
-                    "file": ("a.png", b"png", "application/octet-stream")
-                },
+                "files": {"file": ("a.png", b"png", "application/octet-stream")},
                 "timeout": 30,
             },
         )

@@ -25,7 +25,8 @@ interface NoteDetail {
 }
 
 function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "Não foi possível enviar a sugestão.";
+  if (!(error instanceof ApiError))
+    return "Não foi possível enviar a sugestão.";
   if (error.status === 403) return "Assine o deck para sugerir a exclusão.";
   if (error.status === 429)
     return "Você enviou sugestões demais. Aguarde um pouco e tente novamente.";
@@ -117,8 +118,8 @@ export default function SuggestDeletionPage() {
         Sugerir exclusão da nota
       </h1>
       <p className="mb-6 max-w-[70ch] text-sm text-muted-foreground">
-        A exclusão só acontece após aprovação de um moderador e será propagada na
-        próxima sincronização.
+        A exclusão só acontece após aprovação de um moderador e será propagada
+        na próxima sincronização.
       </p>
 
       {note.isPending && <Skeleton className="mb-6 h-36 w-full" />}
@@ -131,7 +132,9 @@ export default function SuggestDeletionPage() {
           <dl className="flex flex-col gap-3">
             {Object.entries(note.data.field_values).map(([field, html]) => (
               <div key={field}>
-                <dt className="text-sm font-medium text-muted-foreground">{field}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  {field}
+                </dt>
                 <dd
                   className="max-w-[70ch]"
                   // HTML sanitizado pelo backend antes de persistir.
@@ -147,7 +150,8 @@ export default function SuggestDeletionPage() {
         <CircleAlert aria-hidden />
         <AlertTitle>O conteúdo não será removido agora</AlertTitle>
         <AlertDescription>
-          Moderadores verão sua justificativa e poderão aceitar ou rejeitar a proposta.
+          Moderadores verão sua justificativa e poderão aceitar ou rejeitar a
+          proposta.
         </AlertDescription>
       </Alert>
 
@@ -170,8 +174,8 @@ export default function SuggestDeletionPage() {
             aria-describedby="deletion-confirmation-help"
           />
           <span id="deletion-confirmation-help" className="text-sm leading-5">
-            Entendo que, se aprovada, a remoção será enviada aos assinantes na próxima
-            sincronização.
+            Entendo que, se aprovada, a remoção será enviada aos assinantes na
+            próxima sincronização.
           </span>
         </label>
 

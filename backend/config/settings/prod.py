@@ -19,6 +19,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # T129: origens do frontend obrigatórias e explícitas em produção
 CORS_ALLOWED_ORIGINS = os.environ["DJANGO_CORS_ALLOWED_ORIGINS"].split(",")
+PASSWORD_RESET_REDIRECT_URL = os.environ["PASSWORD_RESET_REDIRECT_URL"]
 
 # Supavisor em transaction mode (porta 6543) não suporta cursores server-side;
 # inofensivo em session mode, evita bug silencioso se a URL do pooler mudar.

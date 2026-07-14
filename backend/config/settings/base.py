@@ -106,6 +106,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+PASSWORD_RESET_REDIRECT_URL = os.environ.get(
+    "PASSWORD_RESET_REDIRECT_URL",
+    "http://localhost:3000/password-reset/callback",
+)
 
 # --- DRF: paginação por cursor + versionamento via header Accept (contracts/api-conventions.md) ---
 REST_FRAMEWORK = {

@@ -74,8 +74,8 @@ function ProtectionForm({
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium">Campos protegidos</legend>
         <p className="mb-2 max-w-[70ch] text-sm text-muted-foreground">
-          O conteúdo local destes campos nunca será substituído por uma atualização do
-          deck.
+          O conteúdo local destes campos nunca será substituído por uma
+          atualização do deck.
         </p>
         {fieldNames.map((field) => (
           <label
@@ -84,7 +84,9 @@ function ProtectionForm({
           >
             <Checkbox
               checked={fields.has(field)}
-              onCheckedChange={(checked) => toggleField(field, checked === true)}
+              onCheckedChange={(checked) =>
+                toggleField(field, checked === true)
+              }
             />
             <span className="text-sm font-medium">{field}</span>
           </label>
@@ -103,8 +105,8 @@ function ProtectionForm({
           placeholder="Ex.: pessoal, revisar-depois"
         />
         <p className="text-sm text-muted-foreground">
-          Separe por vírgulas. As tags internas “leech” e “marked” já são preservadas
-          automaticamente.
+          Separe por vírgulas. As tags internas “leech” e “marked” já são
+          preservadas automaticamente.
         </p>
       </div>
 
@@ -124,7 +126,11 @@ function ProtectionForm({
         </p>
       )}
 
-      <Button type="submit" className="min-h-11 self-start" disabled={save.isPending}>
+      <Button
+        type="submit"
+        className="min-h-11 self-start"
+        disabled={save.isPending}
+      >
         <ShieldCheck aria-hidden />
         {save.isPending ? "Salvando…" : "Salvar proteção"}
       </Button>

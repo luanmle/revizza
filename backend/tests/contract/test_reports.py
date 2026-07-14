@@ -85,9 +85,7 @@ def test_admin_can_suspend_content_author(user, make_note):
     )
     model_admin = admin.site._registry[Report]
 
-    model_admin.suspend_content_author(
-        request, Report.objects.filter(pk=report.pk)
-    )
+    model_admin.suspend_content_author(request, Report.objects.filter(pk=report.pk))
 
     user.refresh_from_db()
     report.refresh_from_db()

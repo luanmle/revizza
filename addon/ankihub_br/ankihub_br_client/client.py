@@ -71,9 +71,7 @@ class AnkiHubBrClient:
     def get_subscribed_decks(self) -> list[dict]:
         return self.get("/decks/", params={"subscribed": "1"}).json()["results"]
 
-    def update_subscription_preferences(
-        self, deck_id: str, preferences: dict
-    ) -> dict:
+    def update_subscription_preferences(self, deck_id: str, preferences: dict) -> dict:
         return self.patch(
             f"/decks/{deck_id}/subscriptions/me/", json=preferences
         ).json()

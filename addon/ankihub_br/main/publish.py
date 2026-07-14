@@ -102,4 +102,3 @@ def publish_initial_deck(
         filename, content = media_blobs[content_hash]
         client.upload_signed_media(url, filename, content)
     return result
-

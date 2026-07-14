@@ -21,8 +21,8 @@ def sign_up(email: str, password: str) -> str:
     return str(response.user.id)
 
 
-def send_password_reset(email: str) -> None:
-    _client().auth.reset_password_for_email(email)
+def send_password_reset(email: str, redirect_to: str) -> None:
+    _client().auth.reset_password_for_email(email, {"redirect_to": redirect_to})
 
 
 def delete_user(auth_id: str) -> None:

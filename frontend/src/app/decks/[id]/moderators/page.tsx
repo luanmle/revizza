@@ -125,9 +125,12 @@ export default function ModeratorsPage() {
         / <span className="text-foreground">Moderadores</span>
       </nav>
 
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight">Moderadores</h1>
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight">
+        Moderadores
+      </h1>
       <p className="mb-6 max-w-[70ch] text-sm text-muted-foreground">
-        Moderadores ativos têm o mesmo nível de permissão para revisar sugestões.
+        Moderadores ativos têm o mesmo nível de permissão para revisar
+        sugestões.
       </p>
 
       {isModerator && (
@@ -200,10 +203,14 @@ export default function ModeratorsPage() {
                     {own ? `${moderator.email} (você)` : moderator.email}
                   </p>
                   <Badge
-                    variant={moderator.status === "active" ? "secondary" : "outline"}
+                    variant={
+                      moderator.status === "active" ? "secondary" : "outline"
+                    }
                     className="mt-1 rounded-full"
                   >
-                    {moderator.status === "active" ? "Ativo" : "Convite pendente"}
+                    {moderator.status === "active"
+                      ? "Ativo"
+                      : "Convite pendente"}
                   </Badge>
                 </div>
 
@@ -225,7 +232,11 @@ export default function ModeratorsPage() {
                     className="min-h-11"
                     disabled={remove.isPending}
                     onClick={() => {
-                      if (window.confirm(`Remover ${moderator.email} da moderação?`)) {
+                      if (
+                        window.confirm(
+                          `Remover ${moderator.email} da moderação?`,
+                        )
+                      ) {
                         remove.mutate(moderator.user_id);
                       }
                     }}

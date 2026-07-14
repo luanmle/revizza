@@ -135,8 +135,7 @@ def show_login() -> None:
     layout.addLayout(form)
 
     buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Ok
-        | QDialogButtonBox.StandardButton.Cancel,
+        QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
         dialog,
     )
     buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Entrar")
@@ -213,8 +212,7 @@ def show_publish() -> None:
     form.addRow("Tags de assunto", tags)
     layout.addLayout(form)
     buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Ok
-        | QDialogButtonBox.StandardButton.Cancel,
+        QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
         dialog,
     )
     buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Importar uma vez")
@@ -304,9 +302,7 @@ def show_preferences() -> None:
 
     config = _config()
     if not config.get("api_base_url"):
-        showWarning(
-            "Configure a URL da API e faça login nas configurações do add-on."
-        )
+        showWarning("Configure a URL da API e faça login nas configurações do add-on.")
         return
 
     try:
@@ -357,8 +353,7 @@ def show_preferences() -> None:
     layout.addWidget(scroll)
 
     buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Save
-        | QDialogButtonBox.StandardButton.Cancel,
+        QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel,
         dialog,
     )
     buttons.button(QDialogButtonBox.StandardButton.Save).setText("Salvar")

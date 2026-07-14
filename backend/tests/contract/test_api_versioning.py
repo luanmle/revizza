@@ -2,9 +2,7 @@ import pytest
 
 
 @pytest.mark.django_db
-def test_accept_header_supports_current_and_previous_contract(
-    auth_client, make_deck
-):
+def test_accept_header_supports_current_and_previous_contract(auth_client, make_deck):
     make_deck()
 
     current = auth_client.get(
@@ -29,4 +27,3 @@ def test_accept_header_rejects_unsupported_contract(auth_client):
     )
 
     assert response.status_code == 406
-

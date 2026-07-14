@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,16 +18,20 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 
 export default function PasswordResetPage() {
+  const [error, setError] = useState(false);
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    setError(false);
     setSubmitting(true);
     try {
       await api.post("/accounts/password-reset/", { email: form.get("email") });
       setSent(true);
+    } catch {
+      setError(true);
     } finally {
       setSubmitting(false);
     }
@@ -64,6 +68,14 @@ export default function PasswordResetPage() {
                   autoComplete="email"
                 />
               </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle aria-hidden />
+                  <AlertDescription>
+                    Não foi possível enviar o link. Tente novamente.
+                  </AlertDescription>
+                </Alert>
+              )}
               <Button type="submit" size="lg" disabled={submitting}>
                 {submitting ? "Enviando…" : "Enviar link de recuperação"}
               </Button>

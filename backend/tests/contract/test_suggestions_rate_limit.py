@@ -4,7 +4,6 @@ from django.test import override_settings
 
 from apps.catalog.models import Subscription
 
-
 pytestmark = pytest.mark.django_db
 
 

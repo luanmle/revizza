@@ -26,7 +26,9 @@ class SuggestionDecisionView(APIView):
         )
         if not is_active_deck_moderator(request.user, suggestion.deck):
             return Response(
-                {"detail": "Apenas moderadores ativos do deck podem decidir sugestões."},
+                {
+                    "detail": "Apenas moderadores ativos do deck podem decidir sugestões."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
         with transaction.atomic():
@@ -53,7 +55,9 @@ class SuggestionAcceptView(SuggestionDecisionView):
 
     def decide(self, request, suggestion):
         now = timezone.now()
-        notes = [target.note for target in suggestion.target_notes.select_related("note")]
+        notes = [
+            target.note for target in suggestion.target_notes.select_related("note")
+        ]
         if suggestion.type == Suggestion.Type.CHANGE:
             for note in notes:
                 # campos propostos sobrescrevem; demais campos intactos

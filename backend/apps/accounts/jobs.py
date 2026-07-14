@@ -37,8 +37,8 @@ def delete_expired_accounts(now=None) -> int:
             )
             supabase_gateway.delete_user(str(user.auth_id))
             user.delete()
-            Deck.objects.filter(
-                pk__in=subscribed_decks, subscriber_count__gt=0
-            ).update(subscriber_count=F("subscriber_count") - 1)
+            Deck.objects.filter(pk__in=subscribed_decks, subscriber_count__gt=0).update(
+                subscriber_count=F("subscriber_count") - 1
+            )
             deleted += 1
     return deleted

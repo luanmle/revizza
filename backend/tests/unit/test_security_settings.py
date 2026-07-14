@@ -5,6 +5,10 @@ def _prod_settings(monkeypatch):
     monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "api.example.com")
     monkeypatch.setenv("DJANGO_SECRET_KEY", "test-only-secret-key-with-enough-entropy")
     monkeypatch.setenv("DJANGO_CORS_ALLOWED_ORIGINS", "https://app.example.com")
+    monkeypatch.setenv(
+        "PASSWORD_RESET_REDIRECT_URL",
+        "https://app.example.com/password-reset/callback",
+    )
     import config.settings.prod as prod
 
     return importlib.reload(prod)

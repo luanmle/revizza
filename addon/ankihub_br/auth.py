@@ -81,4 +81,3 @@ def ensure_access_token(config: dict) -> tuple[str, bool]:
     )
     store_session(config, session)
     return config["token"], True
-

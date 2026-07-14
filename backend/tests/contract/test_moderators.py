@@ -20,15 +20,11 @@ def _list_url(deck):
     return f"/api/v1/decks/{deck.id}/moderators/"
 
 
-def test_moderator_invites_and_invitee_accepts(
-    auth_client, user, deck, make_user
-):
+def test_moderator_invites_and_invitee_accepts(auth_client, user, deck, make_user):
     invited = make_user("convidada@example.com")
     Subscription.objects.create(user=invited, deck=deck)
 
-    created = auth_client.post(
-        _list_url(deck), {"email": invited.email}, format="json"
-    )
+    created = auth_client.post(_list_url(deck), {"email": invited.email}, format="json")
 
     assert created.status_code == 201
     assert created.json()["status"] == "pending"
@@ -69,9 +65,7 @@ def test_non_moderator_cannot_invite(deck, make_user):
     client = APIClient()
     client.force_authenticate(user=outsider)
 
-    response = client.post(
-        _list_url(deck), {"email": candidate.email}, format="json"
-    )
+    response = client.post(_list_url(deck), {"email": candidate.email}, format="json")
 
     assert response.status_code == 403
 
@@ -82,18 +76,14 @@ def test_moderator_can_remove_another_active_moderator(
     other = make_user("outra-mod@example.com")
     make_moderator(deck, other)
 
-    response = auth_client.delete(
-        f"/api/v1/decks/{deck.id}/moderators/{other.id}/"
-    )
+    response = auth_client.delete(f"/api/v1/decks/{deck.id}/moderators/{other.id}/")
 
     assert response.status_code == 204
     assert not DeckModerator.objects.filter(deck=deck, user=other).exists()
 
 
 def test_cannot_remove_the_only_active_moderator(auth_client, user, deck):
-    response = auth_client.delete(
-        f"/api/v1/decks/{deck.id}/moderators/{user.id}/"
-    )
+    response = auth_client.delete(f"/api/v1/decks/{deck.id}/moderators/{user.id}/")
 
     assert response.status_code == 409
     assert DeckModerator.objects.filter(
@@ -107,8 +97,6 @@ def test_only_invited_user_can_accept(deck, make_user, make_moderator):
     outsider = APIClient()
     outsider.force_authenticate(user=make_user("outra@example.com"))
 
-    response = outsider.post(
-        f"/api/v1/deck-moderator-invites/{invite.id}/accept/"
-    )
+    response = outsider.post(f"/api/v1/deck-moderator-invites/{invite.id}/accept/")
 
     assert response.status_code == 403

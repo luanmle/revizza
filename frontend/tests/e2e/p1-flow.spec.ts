@@ -5,6 +5,19 @@ const NOTE_ID = "22222222-2222-4222-8222-222222222222";
 const SUGGESTION_ID = "33333333-3333-4333-8333-333333333333";
 const DECK_NAME = "Direito Administrativo";
 
+function recoveryToken() {
+  const encode = (value: object) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  const now = Math.floor(Date.now() / 1000);
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
+    aud: "authenticated",
+    email: "aluno@example.com",
+    exp: now + 3600,
+    iat: now,
+    sub: "44444444-4444-4444-8444-444444444444",
+  })}.test-signature`;
+}
+
 interface MockState {
   registered: boolean;
   subscribed: boolean;
@@ -171,6 +184,50 @@ async function mockApi(page: Page): Promise<MockState> {
 
   return state;
 }
+
+test("T130 redefine a senha após abrir o link de recuperação", async ({
+  page,
+}) => {
+  let updatedPassword = "";
+  await page.route("**/auth/v1/**", async (route) => {
+    const request = route.request();
+    if (new URL(request.url()).pathname.endsWith("/user")) {
+      if (request.method() === "PUT") {
+        updatedPassword = request.postDataJSON().password;
+      }
+      await route.fulfill({
+        status: 200,
+        json: {
+          id: "44444444-4444-4444-8444-444444444444",
+          aud: "authenticated",
+          role: "authenticated",
+          email: "aluno@example.com",
+          app_metadata: { provider: "email", providers: ["email"] },
+          user_metadata: {},
+          created_at: "2026-07-13T12:00:00Z",
+          updated_at: "2026-07-13T12:00:00Z",
+        },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+  await page.goto(
+    `/password-reset/callback#access_token=${recoveryToken()}&expires_at=${expiresAt}&expires_in=3600&refresh_token=test-refresh&type=recovery&token_type=bearer`,
+  );
+  await page
+    .getByLabel("Nova senha", { exact: true })
+    .fill("nova-senha-segura");
+  await page.getByLabel("Confirmar nova senha").fill("nova-senha-segura");
+  await page.getByRole("button", { name: "Alterar senha" }).click();
+
+  await expect(
+    page.getByText("Senha alterada.", { exact: false }),
+  ).toBeVisible();
+  expect(updatedPassword).toBe("nova-senha-segura");
+});
 
 test("T122 mantém transição e preview abaixo de 500ms", async ({ page }) => {
   const state = await mockApi(page);

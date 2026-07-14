@@ -5,9 +5,8 @@ import uuid
 from django.db.models import Q, TextField
 from django.db.models.functions import Cast
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.response import Response
 
 from apps.base import json_text_forms
 from apps.catalog.models import Deck, Subscription

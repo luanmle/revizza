@@ -44,9 +44,7 @@ def test_rejects_unknown_fields_and_blank_tags(auth_client, deck):
     unknown = auth_client.put(
         _url(deck), {"fields": ["Inexistente"], "tags": ["pessoal"]}, format="json"
     )
-    blank = auth_client.put(
-        _url(deck), {"fields": [], "tags": ["  "]}, format="json"
-    )
+    blank = auth_client.put(_url(deck), {"fields": [], "tags": ["  "]}, format="json")
 
     assert unknown.status_code == 400
     assert blank.status_code == 400

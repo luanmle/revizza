@@ -438,7 +438,7 @@ Com múltiplos desenvolvedores, após Foundational:
 - [X] T127 [CRITICAL] Isolate every Django-managed table from the Supabase Data API using a private schema or explicit grants/revokes/RLS, and add a deployment security check proving `anon`/`authenticated` cannot bypass Django authorization per Constitution III / Constitution IV (missing)
 - [X] T128 [CRITICAL] Add a repeatable `.ankiaddon` build that vendors `peewee`, `requests`, and `sentry-sdk` into a package-local import path and prove the built add-on imports without development-site packages per plan: add-on vendoring constraint / US3 (missing)
 - [X] T129 [CRITICAL] Allowlist configured frontend origins in Django and add an authenticated CORS preflight check for the documented separate frontend/backend topology per FR-002 / plan: independent frontend-backend deployments (missing)
-- [ ] T130 Complete password recovery with a Supabase recovery callback, new-password form, configured redirect, and focused browser check proving the user can choose a new password after opening the email link per US1/AC3 / FR-003 (partial)
+- [X] T130 Complete password recovery with a Supabase recovery callback, new-password form, configured redirect, and focused browser check proving the user can choose a new password after opening the email link per US1/AC3 / FR-003 (partial)
 - [X] T131 Replace removed `django.utils.timezone.utc` usage in `backend/apps/sync/views.py` with supported UTC handling and add a contract test for a valid naive ISO-8601 `since_mod` per FR-034 (partial)
 - [X] T132 Make catalog tag/recommendation and note-field search handle accented pt-BR text correctly on PostgreSQL JSONB, with production-like contract cases for terms such as `licitação` per FR-007 / FR-010 / FR-056 (partial)
 - [X] T133 Rate-limit initial deck publish and media signed-URL issuance per authenticated user without blocking the legitimate multi-file fan-out of one sync run, with focused abuse checks per FR-052 / Constitution IV (partial)
@@ -450,7 +450,7 @@ Com múltiplos desenvolvedores, após Foundational:
 - [X] T139 Remove public moderator email addresses from general deck detail/catalog responses and UI, replacing them with the minimum non-sensitive role signal needed for moderation controls per Constitution III (unrequested)
 - [X] T140 Eliminate per-suggestion target-note and vote-count queries in the Community Suggestions list using batched prefetch/annotations, with a bounded-query-count check per FR-054 (partial)
 - [X] T141 Paginate or load additional suggestion-thread comments so comments beyond the first chronological page, including a newly posted 51st comment, remain visible per US5/AC5 / FR-024 (partial)
-- [ ] T142 Restore clean configured quality checks by fixing the current Ruff errors and Black/Prettier drift while excluding generated artifacts from formatting checks per plan: linting/formatting (partial)
+- [X] T142 Restore clean configured quality checks by fixing the current Ruff errors and Black/Prettier drift while excluding generated artifacts from formatting checks per plan: linting/formatting (partial)
 
 ---
 

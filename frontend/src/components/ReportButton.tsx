@@ -69,7 +69,12 @@ export default function ReportButton({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="sm" className="min-h-11" disabled={report.isPending}>
+        <Button
+          type="submit"
+          size="sm"
+          className="min-h-11"
+          disabled={report.isPending}
+        >
           {report.isPending ? "Enviando…" : "Enviar denúncia"}
         </Button>
         <Button

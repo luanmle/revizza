@@ -87,10 +87,16 @@ def test_register_maps_supabase_failure_to_400(api_client, monkeypatch):
     assert not User.objects.exists()
 
 
-def test_password_reset_returns_204_without_leaking_existence(api_client, monkeypatch):
+def test_password_reset_returns_204_without_leaking_existence(
+    api_client, monkeypatch, settings
+):
     calls = []
+    settings.PASSWORD_RESET_REDIRECT_URL = (
+        "https://app.example.com/password-reset/callback"
+    )
     monkeypatch.setattr(
-        "apps.accounts.supabase_gateway.send_password_reset", calls.append
+        "apps.accounts.supabase_gateway.send_password_reset",
+        lambda email, redirect_to: calls.append((email, redirect_to)),
     )
 
     response = api_client.post(
@@ -100,4 +106,6 @@ def test_password_reset_returns_204_without_leaking_existence(api_client, monkey
     )
 
     assert response.status_code == 204
-    assert calls == ["quem@example.com"]
+    assert calls == [
+        ("quem@example.com", "https://app.example.com/password-reset/callback")
+    ]

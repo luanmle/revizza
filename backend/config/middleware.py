@@ -5,7 +5,6 @@ import re
 from django.conf import settings
 from django.utils.cache import patch_vary_headers
 
-
 _VERSION_PARAMETER = re.compile(
     r"(?P<prefix>;\s*version\s*=\s*)(?P<quote>\"?)(?P<version>[\w.-]+)(?P=quote)",
     re.IGNORECASE,
@@ -45,4 +44,3 @@ class ApiVersionCompatibilityMiddleware:
             )
             patch_vary_headers(response, ("Accept",))
         return response
-

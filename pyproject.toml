@@ -2,6 +2,13 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+extend-exclude = ["**/migrations/*.py", "addon/ankihub_br/vendor"]
 
 [tool.black]
 target-version = ["py312"]
+extend-exclude = '''
+(
+  /migrations/
+  | /addon/ankihub_br/vendor/
+)
+'''

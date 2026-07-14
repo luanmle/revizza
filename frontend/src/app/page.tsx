@@ -11,8 +11,8 @@ export default function Home() {
           Decks de Anki mantidos por quem estuda para concursos
         </h1>
         <p className="max-w-[65ch] text-muted-foreground">
-          Assine decks, proponha correções e receba no Anki as melhorias aprovadas
-          pela comunidade.
+          Assine decks, proponha correções e receba no Anki as melhorias
+          aprovadas pela comunidade.
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">

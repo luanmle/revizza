@@ -20,7 +20,9 @@ export default function SiteHeader() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setAuthenticated(!!data.session));
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setAuthenticated(!!data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
       setAuthenticated(!!session),
     );
@@ -56,7 +58,11 @@ export default function SiteHeader() {
               >
                 Entrar
               </Button>
-              <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
+              <Button
+                size="sm"
+                nativeButton={false}
+                render={<Link href="/register" />}
+              >
                 Criar conta
               </Button>
             </>
@@ -65,7 +71,11 @@ export default function SiteHeader() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="ghost" size="icon" aria-label="Menu do usuário" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Menu do usuário"
+                  />
                 }
               >
                 <CircleUser className="size-5" aria-hidden />

@@ -42,4 +42,3 @@ def test_entry_point_reads_sentry_dsn_from_anki_config(monkeypatch):
     entry_point.run()
 
     assert initialized == ["https://dsn.invalid/1", "setup"]
-

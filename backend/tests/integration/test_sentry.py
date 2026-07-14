@@ -47,8 +47,7 @@ def test_django_unhandled_error_reaches_sentry(client):
 
     assert response.status_code == 500
     assert any(
-        value["type"] == "RuntimeError"
-        and value["value"] == "falha sentry de teste"
+        value["type"] == "RuntimeError" and value["value"] == "falha sentry de teste"
         for event in transport.events
         for value in event["exception"]["values"]
     )
