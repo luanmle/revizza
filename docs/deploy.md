@@ -52,7 +52,11 @@ Django via release phase do backend.
    `SUPABASE_SERVICE_ROLE_KEY`. Frontend não precisa de config var — só `PORT`, injetada
    automaticamente pelo Heroku. Ver tabela de segredos abaixo.
 4. Gerar um `HEROKU_API_KEY` (`heroku authorizations:create`) e salvar como secret no GitHub
-   (Settings → Secrets and variables → Actions) — **feito**.
+   (Settings → Secrets and variables → Actions) — **feito**. **Pegadinha**: `--json` retorna
+   `access_token` como objeto aninhado (`{"id": ..., "token": "..."}`), não string — o token é
+   `.access_token.token`, não `.access_token`. Extrair errado não dá erro de parsing, só produz
+   uma credencial inválida silenciosa (`401 Unauthorized` no `docker login` do CI, sem pista óbvia
+   da causa).
 5. Salvar `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` como secrets no GitHub também
    (build args do frontend) — **feito**.
 6. Registrar a URL de produção do frontend em Supabase → Auth → URL Configuration (redirect do
@@ -113,6 +117,33 @@ Dois lugares diferentes, papéis diferentes — não confundir:
 (`https://revizza-web-a43d443ee5e7.herokuapp.com`); `NEXT_PUBLIC_API_URL` no frontend precisa apontar pro backend
 — os dois apps se referenciam por URL pública, não por rede interna (Heroku não oferece rede privada
 entre apps distintos no plano Common Runtime).
+
+### `DATABASE_URL`: pooler, não conexão direta (achado no primeiro deploy real)
+
+O primeiro deploy quebrou com `Network is unreachable` porque copiamos o `DATABASE_URL` de
+conexão direta (`db.<ref>.supabase.co:5432`) do `.env` de dev direto pro Heroku. Esse hostname
+resolve **só IPv6**, e o Heroku Common Runtime não tem saída IPv6 — isso nunca vai funcionar,
+independente de senha ou config.
+
+Fix: usar a connection string do **Session pooler** (Supavisor), pegada em Supabase Dashboard →
+Project Settings → Database → Connect → aba "Session pooler". Dois detalhes que quebraram na
+prática, não só teoria:
+
+1. **Região do pooler não é dedutível pelo nome do projeto** — a Constituição documenta a região
+   do projeto como "US East (Virginia)" (`us-east-1`), mas o pooler real deste projeto está em
+   `us-east-2` (Ohio). `us-east-1` errado dá `FATAL: tenant/user <ref> not found` (o Supavisor
+   nem reconhece o tenant naquele host/shard) — não confundir com erro de senha. Sempre pegar o
+   host exato do dashboard, nunca assumir por região documentada em outro lugar.
+2. **Senha com caractere especial precisa de percent-encoding na URL** — a senha deste projeto
+   contém um `@` literal. Colada crua na connection string (`postgres:senha@com@arroba@host`),
+   quebra o parser de URL (interpreta o primeiro/errado `@` como o separador usuário:senha@host) e
+   dá `password authentication failed`, não um erro de parsing óbvio. `urllib.parse.quote(senha,
+   safe='')` antes de montar a URL resolve.
+
+Nenhuma dessas duas coisas aparece no `.env.example` de forma acionável (ele avisa sobre
+percent-encoding em comentário, mas é fácil pular ao copiar um valor já existente de outro
+ambiente). Se o projeto Supabase mudar (novo projeto, migração de região), reconferir os dois
+pontos direto no dashboard antes de colar em `heroku config:set`.
 
 ## Rollback
 
