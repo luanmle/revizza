@@ -1,0 +1,104 @@
+name: Deploy
+
+# Fluxo documentado em docs/deploy.md. Sem staging — push em main testa, builda e libera direto
+# (MVP/teste fechado, YAGNI — Constituição Princípio V).
+on:
+  push:
+    branches: [main]
+
+env:
+  HEROKU_BACKEND_APP: revizza-api
+  HEROKU_FRONTEND_APP: revizza-web
+  # Hostname público real dos apps (Heroku gerou com sufixo hash — não é <app>.herokuapp.com).
+  BACKEND_PUBLIC_URL: https://revizza-api-37fd874aff98.herokuapp.com
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Backend tests
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test
+
+  build-and-push-backend:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Heroku container login
+        run: heroku container:login
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Build and push web + release images
+        working-directory: backend
+        run: |
+          docker build --target web -t registry.heroku.com/$HEROKU_BACKEND_APP/web .
+          docker build --target release -t registry.heroku.com/$HEROKU_BACKEND_APP/release .
+          docker push registry.heroku.com/$HEROKU_BACKEND_APP/web
+          docker push registry.heroku.com/$HEROKU_BACKEND_APP/release
+
+  build-and-push-frontend:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Heroku container login
+        run: heroku container:login
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      # NEXT_PUBLIC_* viram parte do bundle JS no build — precisam existir agora, não no runtime do
+      # dyno (docs/deploy.md, mesma lição de docs/docker.md).
+      - name: Build and push web image
+        working-directory: frontend
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            --build-arg NEXT_PUBLIC_API_URL="${BACKEND_PUBLIC_URL}/api/v1" \
+            -t registry.heroku.com/$HEROKU_FRONTEND_APP/web .
+          docker push registry.heroku.com/$HEROKU_FRONTEND_APP/web
+
+  release:
+    needs: [build-and-push-backend, build-and-push-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      # web+release juntos: o Heroku roda a imagem release primeiro (migrations) e só promove web
+      # depois que ela terminar sem erro.
+      - name: Release backend
+        run: heroku container:release web release --app $HEROKU_BACKEND_APP
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+
+      - name: Release frontend
+        run: heroku container:release web --app $HEROKU_FRONTEND_APP
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
