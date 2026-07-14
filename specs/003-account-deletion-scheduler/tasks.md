@@ -173,7 +173,7 @@ complete.
       suite plus the existing `backend/tests/contract/test_account_privacy.py`
       to confirm no regression in `jobs.delete_expired_accounts`'s existing
       behavior (anonymization, subscriber count decrement).
-- [ ] T012 Walk through `specs/003-account-deletion-scheduler/quickstart.md`
+- [X] T012 Walk through `specs/003-account-deletion-scheduler/quickstart.md`
       end-to-end against a real or staging Heroku app and confirm the
       Scheduler job is visible and fires as configured.
 
