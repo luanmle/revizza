@@ -1,6 +1,7 @@
 """Contract test: GET /api/v1/decks/{id}/notes/ e GET /api/v1/notes/{id}/
 (contracts/notes.md, FR-010, FR-011)."""
 
+import time
 import uuid
 
 import pytest
@@ -45,7 +46,6 @@ def test_search_by_term_matches_field_content(auth_client, deck, make_note):
     assert _ids(response) == {str(hit.id)}
 
 
-
 def test_search_accented_term_matches_literal_utf8_storage(
     auth_client, deck, make_note
 ):
@@ -72,6 +72,38 @@ def test_search_by_exact_note_id(auth_client, deck, make_note):
     response = auth_client.get(_url(deck), {"note_id": str(hit.id)})
 
     assert _ids(response) == {str(hit.id)}
+
+
+def test_search_10k_notes_stays_within_500ms(auth_client, deck):
+    from django.utils import timezone
+
+    from apps.notes.models import Note
+
+    now = timezone.now()
+    notes = [
+        Note(
+            deck=deck,
+            note_type=deck.note_type,
+            guid=f"perf-{index}",
+            field_values={
+                "Frente": (
+                    "agulha de desempenho" if index == 9_999 else "conteúdo comum"
+                ),
+                "Verso": "15 dias",
+            },
+            mod=now,
+        )
+        for index in range(10_000)
+    ]
+    Note.objects.bulk_create(notes, batch_size=1_000)
+
+    started_at = time.perf_counter()
+    response = auth_client.get(_url(deck), {"q": "agulha de desempenho"})
+    elapsed = time.perf_counter() - started_at
+
+    assert response.status_code == 200
+    assert _ids(response) == {str(notes[-1].id)}
+    assert elapsed < 0.5, f"Busca em 10 mil notas levou {elapsed * 1_000:.1f}ms"
 
 
 def test_invalid_note_id_returns_400(auth_client, deck):
@@ -106,9 +138,7 @@ def test_list_requires_authentication(api_client, make_deck):
 # --- Detalhe (FR-011) ---
 
 
-def test_detail_returns_fields_and_note_type_for_preview(
-    auth_client, deck, make_note
-):
+def test_detail_returns_fields_and_note_type_for_preview(auth_client, deck, make_note):
     note = make_note(deck=deck, tags=["direito"])
 
     response = auth_client.get(f"/api/v1/notes/{note.id}/")

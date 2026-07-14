@@ -422,9 +422,9 @@ Com múltiplos desenvolvedores, após Foundational:
 - [X] T118 Make bulk suggestions collect and submit the shared proposed correction instead of creating a no-op suggestion, with one contract/UI check per US4/AC5 / FR-017 (partial)
 - [X] T119 Show current-vs-suggested values, linked note context, and the note's open-suggestion count on Community Suggestions cards per US5/AC3 (partial)
 - [X] T120 Extend `frontend/src/components/NotePreview.tsx` beyond its documented template subset so supported Anki cloze, hint/filter, and nested conditional templates render faithfully, with focused fixtures per FR-011 (partial)
-- [ ] T121 Add a representative 10k-note search performance check for the 500ms budget and optimize the query only if it fails per FR-010 / SC-005 (missing)
-- [ ] T122 Add a focused page-transition and note-preview performance check for the 500ms typical-load budget per FR-054 (missing)
-- [ ] T123 Add the planned Playwright P1 flow covering cadastro→assinatura→sugestão→moderação in `frontend/tests/e2e/` per plan: testing strategy (missing)
+- [X] T121 Add a representative 10k-note search performance check for the 500ms budget and optimize the query only if it fails per FR-010 / SC-005 (missing)
+- [X] T122 Add a focused page-transition and note-preview performance check for the 500ms typical-load budget per FR-054 (missing)
+- [X] T123 Add the planned Playwright P1 flow covering cadastro→assinatura→sugestão→moderação in `frontend/tests/e2e/` per plan: testing strategy (missing)
 - [X] T124 Reject votes by a suggestion's own author in `backend/apps/suggestions/views.py` and hide self-vote controls in the Community Suggestions UI per US5/AC4 / FR-023 (partial)
 - [X] T125 Persist, sanitize, display in the diff, and apply proposed tag additions/updates for single and bulk change suggestions per US4/AC3, US4/AC5 / FR-013 (partial)
 
