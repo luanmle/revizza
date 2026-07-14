@@ -7,9 +7,8 @@ class Deck(BaseModel):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     subject_tags = models.JSONField(default=list)  # filtro do catálogo (FR-007)
-    note_type = models.ForeignKey(
-        "notes.NoteType", on_delete=models.PROTECT, related_name="decks"
-    )
+    # sem FK de tipo de nota: um deck pode ter N tipos, derivados das suas notas via
+    # NoteType.objects.filter(notes__deck=deck).distinct() (research.md Decisão 1)
     note_count = models.PositiveIntegerField(default=0)  # denormalizado
     subscriber_count = models.PositiveIntegerField(default=0)  # denormalizado
 

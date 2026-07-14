@@ -34,6 +34,9 @@
 - Q: Se o job de exclusão de conta (FR-046) ou o e-mail de notificação de remoção (FR-050) falhar, o que acontece? → A: O job de exclusão é idempotente e reexecuta na próxima janela agendada até concluir; falha de e-mail nunca bloqueia a ação principal (dado deletado ou conteúdo removido não espera confirmação de envio); erros vão ao Sentry, sem retry imediato nem alerta ativo.
 - Q: A importação inicial de deck precisa ser transação única incluindo mídia, ou tolera mídia em melhor-esforço? → A: Deck/tipo de nota/notas committam em uma única transação atômica (nunca existe deck "meio publicado" no catálogo); upload de mídia roda fora da transação em melhor esforço — falha isolada de mídia não desfaz a publicação, só fica pendente até uma sincronização trazer o arquivo.
 - Q: Decisões de moderação concorrentes ou submissão duplicada da mesma correção — qual estado final é garantido? → A: A primeira decisão vence; a sugestão é travada dentro da transação de decisão e uma segunda tentativa concorrente falha sem sobrescrever o status terminal já gravado; submissão duplicada/vazia da mesma correção é rejeitada no servidor antes de virar sugestão nova.
+- Q: Quais recursos e critério objetivo delimitam a "renderização fiel" de FR-011 no MVP? → A: Campos, `FrontSide`, cloze, condicionais aninhadas, filtros `text`/`hint`/`type`, CSS e imagens, comparados por fixtures de conteúdo e estilos no Anki LTS; scripts e filtros personalizados ficam fora do MVP.
+- Q: Sob quais condições objetivas devem ser medidos os 500ms de FR-054? → A: p95 de 20 medições após aquecimento, com 10 sessões concorrentes, dispositivo de 4 CPUs/8GB e rede de 100ms RTT/10Mbps, da ação até o conteúdo visível.
+- Q: Como medir população, método e janela de SC-008 sem telemetria invasiva? → A: Durante 30 dias consecutivos da beta fechada, investigar 100% dos relatos de perda após sync comparando backup pré-sync e estado posterior; nenhuma perda confirmada de campo/tag protegida.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -321,7 +324,7 @@ Como estudante, quero acessar todas as funções do add-on por um menu "Revizza"
 
 **Notas e busca**
 - **FR-010**: O sistema MUST permitir buscar notas dentro de um deck por termo textual nos campos ou por ID exato, retornando resultado em menos de 500ms para decks de até 10 mil notas.
-- **FR-011**: O sistema MUST renderizar a nota na web reproduzindo fielmente o template e CSS originais do Anki, isolado visualmente do CSS/tema do restante da aplicação (o design system do frontend não pode alterar a aparência do preview).
+- **FR-011**: O sistema MUST renderizar a nota na web reproduzindo o template e CSS originais do Anki para campos, `FrontSide`, cloze, condicionais aninhadas, filtros `text`/`hint`/`type` e imagens, isolado visualmente do CSS/tema do restante da aplicação. A fidelidade MUST ser validada comparando conteúdo e estilos de fixtures representativas no Anki LTS mais recente; scripts e filtros personalizados ficam fora do escopo do MVP.
 
 **Discussão e sugestões**
 - **FR-012**: O sistema MUST permitir comentários públicos em uma nota, em thread única cronológica (sem aninhamento profundo), com autor e timestamp visíveis, e permitir que o próprio autor edite ou exclua seu comentário.
@@ -379,7 +382,7 @@ Como estudante, quero acessar todas as funções do add-on por um menu "Revizza"
 
 **Não-funcionais / transversais**
 - **FR-053**: Toda tela do MVP MUST ser funcional em viewport de 360px de largura sem exigir rolagem horizontal (mobile-first).
-- **FR-054**: Transições de página e renderização de preview de nota MUST responder em até 500ms sob carga típica (deck de até 10 mil notas).
+- **FR-054**: Transições de página e renderização de preview de nota MUST atingir p95 de até 500ms em 20 medições após uma execução de aquecimento, da ação do usuário até o conteúdo visível, com deck de até 10 mil notas, 10 sessões autenticadas concorrentes, dispositivo de referência com 4 CPUs/8GB e rede limitada a 100ms RTT/10Mbps.
 - **FR-055**: Toda tela do MVP MUST atender requisitos básicos de acessibilidade: labels associados a todo campo de formulário, contraste de texto/fundo em nível AA (WCAG), e operação via teclado para todo componente interativo (editor rich text, abas, botões de curtir/descurtir/aceitar/rejeitar).
 - **FR-056**: Toda interface do MVP (textos, rótulos, mensagens de erro, e-mails transacionais) MUST estar em português do Brasil (pt-BR) — não há suporte a outros idiomas no MVP.
 
@@ -415,7 +418,7 @@ Como estudante, quero acessar todas as funções do add-on por um menu "Revizza"
 - **SC-005**: Usuários conseguem localizar uma nota específica dentro de um deck de até 10 mil notas (por termo ou ID) em menos de 500ms.
 - **SC-006**: Usuários conseguem concluir cadastro e primeiro login em menos de 2 minutos, sem assistência externa.
 - **SC-007**: Todas as telas do MVP permanecem utilizáveis (sem rolagem horizontal) em uma tela de 360px de largura.
-- **SC-008**: Nenhuma sincronização reportada resulta em perda de anotação ou tag pessoal protegida pelo usuário.
+- **SC-008**: Durante 30 dias consecutivos da beta fechada, 100% dos relatos de perda após sincronização feitos pelos participantes MUST ser investigado comparando o backup pré-sync com o estado posterior; nenhum relato pode confirmar perda de anotação, campo ou tag pessoal protegida pelo usuário.
 - **SC-009**: Toda tela do MVP passa em auditoria de contraste AA (WCAG) e permite completar cada fluxo crítico (cadastro, inscrição, sugestão, moderação) usando somente o teclado.
 
 ## Assumptions

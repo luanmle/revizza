@@ -101,7 +101,10 @@ def _change_validation_error(deck, notes, validated) -> Response | None:
             {"detail": "Proponha ao menos uma mudança de campo ou de tag."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    unknown = [f for f in fields if f not in deck.note_type.field_names]
+    # notes garantidamente de um único tipo (T009/bulk e nota única); campos esperados
+    # vêm do tipo das notas-alvo, não mais do deck (research.md Decisão 4)
+    expected_fields = notes[0].note_type.field_names
+    unknown = [f for f in fields if f not in expected_fields]
     if unknown:
         return Response(
             {
@@ -193,6 +196,18 @@ class BulkChangeSuggestionCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         deck = decks.pop()
+        if len({note.note_type_id for note in notes}) != 1:
+            # invariante de data-model.md: uma mudança em lote cobre um só tipo de nota
+            return Response(
+                {
+                    "errors": {
+                        "note_ids": [
+                            "Todas as notas devem ser do mesmo tipo de nota."
+                        ]
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not _subscriber_or_none(request.user, deck):
             return Response(
                 {"detail": "Assine o deck para sugerir mudanças."},
@@ -210,7 +225,7 @@ class NewNoteSuggestionCreateView(APIView):
     def post(self, request, deck_id):
         if limited := _rate_limit_response(request):
             return limited
-        deck = get_object_or_404(Deck.objects.select_related("note_type"), pk=deck_id)
+        deck = get_object_or_404(Deck, pk=deck_id)
         if not _subscriber_or_none(request.user, deck):
             raise PermissionDenied("Assine o deck para sugerir uma nota nova.")
         serializer = NewNoteSuggestionSerializer(

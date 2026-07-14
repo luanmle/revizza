@@ -70,6 +70,47 @@ def test_delta_creates_notetype_notes_and_subdecks(col):
     assert col.decks.name(card2.did) == "Direito Penal"
 
 
+def test_delta_creates_multiple_note_types_and_maps_each_note(col):
+    """US2: payload com 2 tipos recria ambos e associa cada nota pelo note_type_id."""
+    payload = {
+        "deck_name": "Direito Penal",
+        "note_types": [
+            {
+                "id": "nt-basica",
+                "name": "Básico BR",
+                "field_names": ["Frente", "Verso"],
+                "templates": [{"name": "Card 1", "qfmt": "{{Frente}}", "afmt": "{{Verso}}"}],
+                "css": "",
+            },
+            {
+                "id": "nt-cloze",
+                "name": "Cloze BR",
+                "field_names": ["Texto", "Extra"],
+                "templates": [{"name": "Cloze", "qfmt": "{{cloze:Texto}}", "afmt": "{{cloze:Texto}}"}],
+                "css": "",
+            },
+        ],
+        "notes": [
+            {"guid": "b1", "note_type_id": "nt-basica", "field_values": {"Frente": "Q", "Verso": "A"},
+             "tags": [], "anki_deck_path": "", "mod": "2026-07-13T00:00:00+00:00", "deleted": False},
+            {"guid": "c1", "note_type_id": "nt-cloze", "field_values": {"Texto": "{{c1::x}}", "Extra": "E"},
+             "tags": [], "anki_deck_path": "", "mod": "2026-07-13T00:00:00+00:00", "deleted": False},
+        ],
+        "subdecks": [],
+        "media": [],
+    }
+
+    sync.apply_delta(col, payload)
+
+    assert col.models.by_name("Básico BR") is not None
+    assert col.models.by_name("Cloze BR") is not None
+    basica = col.get_note(_nid(col, "b1"))
+    cloze = col.get_note(_nid(col, "c1"))
+    assert basica.note_type()["name"] == "Básico BR"
+    assert cloze.note_type()["name"] == "Cloze BR"
+    assert cloze.fields == ["{{c1::x}}", "E"]
+
+
 def test_delta_updates_existing_note_by_guid(col):
     sync.apply_delta(col, _payload([_note("n1")]))
 

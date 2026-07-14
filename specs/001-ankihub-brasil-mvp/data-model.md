@@ -35,7 +35,7 @@ administrador (FR-049).
 | `name` | string | |
 | `description` | text | |
 | `subject_tags` | lista de string | usado no filtro do catálogo (FR-007) |
-| `note_type` | FK → NoteType | um deck usa um tipo de nota (pode ser estendido a N no pós-MVP) |
+| ~~`note_type`~~ | — | **removido** na feature `002-multi-notetype-decks`: um deck pode conter N tipos de nota; derivados via `NoteType.objects.filter(notes__deck=deck).distinct()` |
 | `note_count` | int, denormalizado | atualizado ao criar/remover nota |
 | `subscriber_count` | int, denormalizado | atualizado ao (des)inscrever |
 

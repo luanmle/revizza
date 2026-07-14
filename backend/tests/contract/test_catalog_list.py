@@ -73,6 +73,27 @@ def test_detail_exposes_only_non_sensitive_moderator_state(
     assert body["moderator_count"] == 1
     assert body["is_moderator"] is True
     assert body["is_subscribed"] is False
+    assert body["note_types"] == []
+
+
+def test_detail_exposes_note_types_with_per_type_count(auth_client, make_note):
+    from apps.notes.models import NoteType
+
+    t1 = NoteType.objects.create(name="A", field_names=["F"], templates=[])
+    t2 = NoteType.objects.create(name="B", field_names=["F"], templates=[])
+    t3 = NoteType.objects.create(name="C", field_names=["F"], templates=[])
+    note = make_note(note_type=t1)
+    deck = note.deck
+    make_note(deck=deck, note_type=t2)
+    make_note(deck=deck, note_type=t2)
+    make_note(deck=deck, note_type=t3)
+    make_note(deck=deck, note_type=t3)
+    make_note(deck=deck, note_type=t3)
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+
+    counts = {t["name"]: t["note_count"] for t in body["note_types"]}
+    assert counts == {"A": 1, "B": 2, "C": 3}  # FR-011: composição por tipo
 
 
 def test_list_requires_authentication(api_client):

@@ -74,7 +74,7 @@ def test_search_by_exact_note_id(auth_client, deck, make_note):
     assert _ids(response) == {str(hit.id)}
 
 
-def test_search_10k_notes_stays_within_500ms(auth_client, deck):
+def test_search_10k_notes_stays_within_500ms(auth_client, deck, note_type):
     from django.utils import timezone
 
     from apps.notes.models import Note
@@ -83,7 +83,7 @@ def test_search_10k_notes_stays_within_500ms(auth_client, deck):
     notes = [
         Note(
             deck=deck,
-            note_type=deck.note_type,
+            note_type=note_type,
             guid=f"perf-{index}",
             field_values={
                 "Frente": (

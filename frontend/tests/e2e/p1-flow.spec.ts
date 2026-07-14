@@ -83,6 +83,14 @@ async function mockApi(page: Page): Promise<MockState> {
         moderator_count: 1,
         is_moderator: state.moderator,
         is_subscribed: state.subscribed,
+        note_types: [
+          {
+            id: "nt-1",
+            name: "Básico",
+            field_names: ["Frente", "Verso"],
+            note_count: 1,
+          },
+        ],
       });
     } else if (
       method === "POST" &&
@@ -318,4 +326,57 @@ test("T123 cobre cadastro, assinatura, sugestão e moderação", async ({
     moderator: true,
     suggestion: { status: "accepted", tags: ["atualizada"] },
   });
+});
+
+test("T148 conclui cadastro e primeiro login em menos de 2 minutos", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await mockApi(page);
+  await page.route("**/auth/v1/token**", async (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      email: "aluno@example.com",
+      password: "senha-segura",
+    });
+    await route.fulfill({
+      status: 200,
+      json: {
+        access_token: recoveryToken(),
+        token_type: "bearer",
+        expires_in: 3600,
+        refresh_token: "test-refresh",
+        user: {
+          id: "44444444-4444-4444-8444-444444444444",
+          aud: "authenticated",
+          role: "authenticated",
+          email: "aluno@example.com",
+          app_metadata: { provider: "email", providers: ["email"] },
+          user_metadata: {},
+          created_at: "2026-07-14T12:00:00Z",
+          updated_at: "2026-07-14T12:00:00Z",
+        },
+      },
+    });
+  });
+
+  const startedAt = performance.now();
+  await page.goto("/register");
+  await page.getByLabel("E-mail", { exact: true }).fill("aluno@example.com");
+  await page.getByLabel("Senha", { exact: true }).fill("senha-segura");
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Criar conta" })
+    .click();
+  await page.getByRole("link", { name: "faça login" }).click();
+  await page.getByLabel("E-mail", { exact: true }).fill("aluno@example.com");
+  await page.getByLabel("Senha", { exact: true }).fill("senha-segura");
+  await page.getByRole("main").getByRole("button", { name: "Entrar" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Minha conta" }),
+  ).toBeVisible();
+
+  const elapsedMs = performance.now() - startedAt;
+  expect(elapsedMs, `Fluxo levou ${elapsedMs.toFixed(1)}ms`).toBeLessThan(
+    120_000,
+  );
 });

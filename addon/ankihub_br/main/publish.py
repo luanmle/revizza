@@ -22,6 +22,18 @@ def _relative_deck_path(col, note_id, root_name: str) -> str:
     return card_deck[len(prefix) :] if card_deck.startswith(prefix) else ""
 
 
+def _note_type_payload(notetype: dict) -> dict:
+    return {
+        "name": notetype["name"],
+        "field_names": [field["name"] for field in notetype["flds"]],
+        "templates": [
+            {"name": t["name"], "qfmt": t["qfmt"], "afmt": t["afmt"]}
+            for t in notetype["tmpls"]
+        ],
+        "css": notetype.get("css", ""),
+    }
+
+
 def build_publish_payload(
     col, deck_id: int, subject_tags: list[str] | None = None
 ) -> tuple[dict, dict[str, tuple[str, bytes]]]:
@@ -33,18 +45,13 @@ def build_publish_payload(
         raise PublishError("O deck selecionado não possui notas.")
 
     notes = [col.get_note(note_id) for note_id in note_ids]
-    notetype_ids = {note.mid for note in notes}
-    if len(notetype_ids) != 1:
-        names = sorted(
-            {col.models.get(mid)["name"] for mid in notetype_ids}
-        )
-        raise PublishError(
-            "A importação inicial aceita um único tipo de nota por deck. "
-            f"Encontrados: {', '.join(names)}."
-        )
-    notetype = notes[0].note_type()
-    if not notetype:
-        raise PublishError("Não foi possível ler o tipo de nota do deck.")
+    # um deck pode ter várias notas de tipos distintos: uma entrada em note_types
+    # por tipo, na ordem de primeira ocorrência (research.md Decisão 5)
+    mid_order: list[int] = []
+    for note in notes:
+        if note.mid not in mid_order:
+            mid_order.append(note.mid)
+    mid_index = {mid: i for i, mid in enumerate(mid_order)}
 
     media_dir = Path(col.media.dir()).resolve()
     media_blobs: dict[str, tuple[str, bytes]] = {}
@@ -57,6 +64,7 @@ def build_publish_payload(
                 "field_values": field_values,
                 "tags": list(note.tags),
                 "anki_deck_path": _relative_deck_path(col, note_id, root_name),
+                "note_type_index": mid_index[note.mid],
             }
         )
         for value in field_values.values():
@@ -71,19 +79,7 @@ def build_publish_payload(
     payload = {
         "name": root_name,
         "subject_tags": subject_tags or [],
-        "note_type": {
-            "name": notetype["name"],
-            "field_names": [field["name"] for field in notetype["flds"]],
-            "templates": [
-                {
-                    "name": template["name"],
-                    "qfmt": template["qfmt"],
-                    "afmt": template["afmt"],
-                }
-                for template in notetype["tmpls"]
-            ],
-            "css": notetype.get("css", ""),
-        },
+        "note_types": [_note_type_payload(col.models.get(mid)) for mid in mid_order],
         "notes": exported_notes,
         "media": [
             {"filename": filename, "content_hash": content_hash}

@@ -14,12 +14,16 @@ ao mesmo `NoteType` — `{"errors": {"note_ids": ["Todas as notas devem ser do m
 
 ## `POST /api/v1/decks/{id}/suggestions/new-note/`
 
-**Novo campo obrigatório no corpo**: `note_type_id` (UUID) — deve ser um dos tipos de nota já
-presentes no deck no momento da sugestão. `400` se ausente ou se não pertencer ao deck. Os campos de
-`proposed_field_values` são validados contra o `field_names` desse `note_type_id` (antes: contra
-`deck.note_type.field_names`).
+**Novo campo no corpo**: `note_type` (UUID do `NoteType`) — deve ser um dos tipos de nota já presentes
+no deck no momento da sugestão. **Obrigatório apenas se o deck tem 2 ou mais tipos de nota** (`400` se
+ausente nesse caso, ou se o valor enviado não pertencer ao deck); se o deck tem exatamente um tipo de
+nota, o campo é opcional e o backend resolve automaticamente para esse único tipo — preserva
+compatibilidade retroativa (FR-010/SC-003) para decks publicados antes desta feature. Os campos de
+`proposed_field_values` são validados contra o `field_names` do `note_type` resolvido (antes: contra
+`deck.note_type.field_names`). Nome do campo escolhido para casar com o nome do campo no model
+`Suggestion` (`data-model.md`), sem remapear via `source=` no serializer.
 
-**Resposta**: inclui `note_type_id` no corpo (antes ausente, pois era implícito).
+**Resposta**: inclui `note_type` (UUID) no corpo (antes ausente, pois era implícito).
 
 ## `POST /api/v1/suggestions/{id}/accept/`
 

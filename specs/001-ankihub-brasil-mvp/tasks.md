@@ -471,7 +471,7 @@ Com múltiplos desenvolvedores, após Foundational:
 
 **Purpose**: Lacuna de cobertura detectada por /speckit-analyze em 2026-07-14 — SC-006 sem tarefa de validação; sem duplicar T101–T147
 
-- [ ] T148 Add a timed cadastro→primeiro-login validation (Playwright walkthrough em `frontend/tests/e2e/` ou passo cronometrado documentado em `quickstart.md`) provando o orçamento de menos de 2 minutos sem assistência externa per SC-006 (missing)
+- [X] T148 Add a timed cadastro→primeiro-login validation (Playwright walkthrough em `frontend/tests/e2e/` ou passo cronometrado documentado em `quickstart.md`) provando o orçamento de menos de 2 minutos sem assistência externa per SC-006 (missing)
 
 ---
 

@@ -59,7 +59,7 @@ def test_publishes_snapshot_then_uploads_only_requested_media(col):
     assert client.calls[0][:2] == ("publish", "remote-id")
 
 
-def test_rejects_deck_with_multiple_note_types(col):
+def test_accepts_deck_with_multiple_note_types(col):
     deck_id = col.decks.id("Direito")
     first = col.new_note(col.models.current())
     first.fields = ["A", "B"]
@@ -76,7 +76,11 @@ def test_rejects_deck_with_multiple_note_types(col):
     second.fields = ["C"]
     col.add_note(second, deck_id)
 
-    with pytest.raises(publish.PublishError, match="único tipo") as excinfo:
-        publish.build_publish_payload(col, deck_id)
-    assert "Alternativo" in str(excinfo.value)
-    assert col.models.current()["name"] in str(excinfo.value)
+    payload, _blobs = publish.build_publish_payload(col, deck_id)
+
+    names = [nt["name"] for nt in payload["note_types"]]
+    assert names == ["Basic", "Alternativo"]  # ordem de primeira ocorrência
+    # cada nota aponta para o índice do seu próprio tipo
+    by_guid = {n["guid"]: n["note_type_index"] for n in payload["notes"]}
+    assert by_guid[first.guid] == 0
+    assert by_guid[second.guid] == 1

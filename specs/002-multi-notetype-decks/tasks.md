@@ -47,54 +47,64 @@ antes que qualquer user story possa ser implementada ou testada com segurança.
 **⚠️ CRITICAL**: nenhuma tarefa de US1/US2/US3 pode começar antes desta fase — o test suite inteiro
 (`pytest`) quebra assim que a FK sai do model até esta fase terminar.
 
-- [ ] T001 Migração Django em `backend/apps/catalog/migrations/`: remove a FK `Deck.note_type`
+- [X] T001 Migração Django em `backend/apps/catalog/migrations/`: remove a FK `Deck.note_type`
       (`backend/apps/catalog/models.py:10-12`)
-- [ ] T002 Migração Django em `backend/apps/suggestions/migrations/`: adiciona `Suggestion.note_type`
+- [X] T002 Migração Django em `backend/apps/suggestions/migrations/`: adiciona `Suggestion.note_type`
       (FK nullable → `notes.NoteType`, `on_delete=PROTECT`) em `backend/apps/suggestions/models.py`
-- [ ] T003 Remove o campo `note_type` de `Deck` em `backend/apps/catalog/models.py:10-12` (aplicado
+- [X] T003 Remove o campo `note_type` de `Deck` em `backend/apps/catalog/models.py:10-12` (aplicado
       pela migração T001); nenhum atributo substituto no model — tipos de nota do deck passam a ser
       derivados via `NoteType.objects.filter(notes__deck=deck).distinct()` (Decisão 1 de
       `research.md`)
-- [ ] T004 Adiciona campo `note_type` (FK nullable) a `Suggestion` em
+- [X] T004 Adiciona campo `note_type` (FK nullable) a `Suggestion` em
       `backend/apps/suggestions/models.py` (aplicado pela migração T002)
-- [ ] T005 [P] Atualiza fixtures `make_deck`/`make_note` em `backend/tests/conftest.py:38-63` para não
+- [X] T005 [P] Atualiza fixtures `make_deck`/`make_note` em `backend/tests/conftest.py:38-63` para não
       passar mais `note_type=` ao criar `Deck` (mantém em `Note`, que já tinha FK própria)
-- [ ] T006 Corrige `protection/views.py:17` (`get_deck`) em `backend/apps/protection/views.py`: remove
+- [X] T006 Corrige `protection/views.py:17` (`get_deck`) em `backend/apps/protection/views.py`: remove
       `select_related("note_type")` inválido (relação não existe mais no `Deck`)
-- [ ] T007 Corrige `ProtectionConfigSerializer.validate_fields` em
+- [X] T007 Corrige `ProtectionConfigSerializer.validate_fields` em
       `backend/apps/protection/serializers.py:14-21`: valida contra a união dos `field_names` de
       todos os tipos de nota do deck (Decisão 4 de `research.md`), não mais `deck.note_type.field_names`
-- [ ] T008 Corrige `_change_validation_error` em `backend/apps/suggestions/views.py:93-124`: resolve
+- [X] T008 Corrige `_change_validation_error` em `backend/apps/suggestions/views.py:93-124`: resolve
       `field_names` esperado a partir do(s) `note_type` das notas-alvo (`notes[0].note_type`, já
       garantido único por T009), não mais `deck.note_type.field_names`
-- [ ] T009 Adiciona validação em `BulkChangeSuggestionCreateView.post` em
+- [X] T009 Adiciona validação em `BulkChangeSuggestionCreateView.post` em
       `backend/apps/suggestions/views.py:171-197`: rejeita com `400` se as notas de `note_ids`
       pertencerem a mais de um `NoteType` (novo invariante de `data-model.md` → "Regra de invariante
       nova")
-- [ ] T010 Corrige `NewNoteSuggestionSerializer` em `backend/apps/suggestions/serializers.py:87-137`:
-      adiciona campo obrigatório `note_type` (FK id), valida que pertence ao deck do contexto, resolve
-      `expected` a partir desse `note_type.field_names` em vez de `self.context["deck"].note_type
-      .field_names` (`:120`)
-- [ ] T011 Corrige `NewNoteSuggestionCreateView.post` em `backend/apps/suggestions/views.py:210-230`:
+- [X] T010 Corrige `NewNoteSuggestionSerializer` em `backend/apps/suggestions/serializers.py:87-137`:
+      adiciona campo `note_type` (FK id) — obrigatório apenas se o deck do contexto tem 2+ tipos de
+      nota (`400` se ausente nesse caso); se o deck tem exatamente um tipo, resolve automaticamente
+      para esse tipo quando omitido (preserva FR-010/SC-003 para decks de tipo único); valida que o
+      valor enviado pertence ao deck do contexto; resolve `expected` a partir do `note_type.field_names`
+      resolvido, em vez de `self.context["deck"].note_type.field_names` (`:120`)
+- [X] T011 Corrige `NewNoteSuggestionCreateView.post` em `backend/apps/suggestions/views.py:210-230`:
       remove `select_related("note_type")` inválido em `Deck.objects...` (`:213`); persiste
       `note_type=serializer.validated_data["note_type"]` na criação da `Suggestion`
-- [ ] T012 Corrige `SuggestionAcceptView.decide` (ramo `NEW_NOTE`) em
+- [X] T012 Corrige `SuggestionAcceptView.decide` (ramo `NEW_NOTE`) em
       `backend/apps/suggestions/decisions.py:83-92`: `Note.objects.create(...note_type=
       suggestion.note_type...)` em vez de `suggestion.deck.note_type`
-- [ ] T013 Corrige `DeltaView.sync` em `backend/apps/sync/views.py:145-150`: troca
+- [X] T013 Corrige `DeltaView.sync` em `backend/apps/sync/views.py:145-150`: troca
       `deck.note_type.structure_changed_at` por
       `NoteType.objects.filter(notes__deck=deck, structure_changed_at__gt=since).exists()` (Decisão 3
       de `research.md`)
-- [ ] T014 Corrige `_deck_payload` em `backend/apps/sync/views.py:91-107`: monta `note_types` a partir
+- [X] T014 Corrige `_deck_payload` em `backend/apps/sync/views.py:91-107`: monta `note_types` a partir
       dos tipos de nota distintos presentes em `notes` (o argumento já recebido, sem query extra) em
       vez de `[_note_type_payload(deck.note_type)]`
-- [ ] T015 Roda a suíte de regressão completa (`cd backend && pytest -q`) e confirma que todos os
+- [X] T015 Roda a suíte de regressão completa (`cd backend && pytest -q`) e confirma que todos os
       testes de contrato existentes (`test_sync_delta.py`, `test_sync_full.py`, `test_protection.py`,
       `test_suggestions_*.py`, `test_catalog_list.py`) passam com decks de tipo único — sem esta
       confirmação, SC-003 (compatibilidade retroativa) não está garantida
+- [X] T016 Adiciona teste de regressão em `backend/tests/contract/test_sync_publish.py` (ou módulo
+      equivalente) que inspeciona os campos do model `Note`/`NoteType` (via introspecção de
+      `_meta.get_fields()` ou fixture explícita) e falha se algum campo de agendamento/estado de
+      cartão (`ease`, `interval`, `due`, `reps`, `lapses`, `queue`, histórico de revisão) existir nesses
+      models ou for lido/gravado pelos endpoints de sync — evidência automatizada de conformidade com
+      a Constituição Princípio VIII (Sync Fidelity & State Separation): payloads de sync/publish
+      tocam exclusivamente Conteúdo da Nota, nunca Estado do Cartão
 
 **Checkpoint**: schema atualizado, todo `deck.note_type` legado corrigido, suíte de testes existente
-verde para decks de tipo único — as user stories abaixo podem começar.
+verde para decks de tipo único, conformidade com Princípio VIII comprovada — as user stories abaixo
+podem começar.
 
 ---
 
@@ -108,22 +118,26 @@ deck aparece no catálogo com todas as notas associadas ao tipo correto, sem err
 
 ### Tests for User Story 1
 
-- [ ] T016 [P] [US1] Atualiza `test_rejects_deck_with_multiple_note_types` em
+- [X] T017 [P] [US1] Atualiza `test_rejects_deck_with_multiple_note_types` em
       `addon/tests/unit/test_publish.py:62-81`: deck com 2 tipos de nota agora **deve ser aceito**
       (payload com `note_types` de 2 itens e `note_type_index` correto por nota), não mais rejeitado
-- [ ] T017 [P] [US1] Novo teste de contrato em `backend/tests/contract/test_sync_publish.py`: `POST
+- [X] T018 [P] [US1] Novo teste de contrato em `backend/tests/contract/test_sync_publish.py`: `POST
       .../publish/` com `note_types: [...]` (2+ itens) cria um `NoteType` por item e associa cada
       `Note` pelo `note_type_index` correto
-- [ ] T018 [P] [US1] Novo teste de contrato em `backend/tests/contract/test_sync_publish.py`:
+- [X] T019 [P] [US1] Novo teste de contrato em `backend/tests/contract/test_sync_publish.py`:
       `note_type_index` fora do intervalo de `note_types` responde `400`
+- [X] T020 [P] [US1] Novo teste de contrato em `backend/tests/contract/test_sync_publish.py`: um item
+      malformado em `note_types` (sem `field_names`) no meio de uma lista de 2+ tipos responde `400` e
+      não persiste nenhum `Deck`/`NoteType`/`Note` — prova a atomicidade exigida por FR-004 também no
+      caso multi-tipo, não só no de tipo único
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Reescreve `build_publish_payload` em `addon/ankihub_br/main/publish.py:25-89`: remove
+- [X] T021 [US1] Reescreve `build_publish_payload` em `addon/ankihub_br/main/publish.py:25-89`: remove
       a guarda `len(notetype_ids) != 1`; agrupa `notes` por `note.mid`; monta `note_types` (lista, uma
       entrada por grupo, na ordem de primeira ocorrência) e adiciona `note_type_index` a cada nota
       exportada (Decisão 2/5 de `research.md`)
-- [ ] T020 [US1] Atualiza `PublishView.post` em `backend/apps/sync/views.py:238-283`: lê
+- [X] T022 [US1] Atualiza `PublishView.post` em `backend/apps/sync/views.py:238-283`: lê
       `data.get("note_types")` (lista) em vez de `data.get("note_type")` (objeto único); cria um
       `NoteType` por item da lista dentro da mesma `transaction.atomic()`; valida `name`/
       `note_types[].field_names` obrigatórios (`400` se ausentes); resolve `Note.note_type` de cada
@@ -144,19 +158,19 @@ recriado com seus templates/CSS; preview web de uma nota de cada tipo usa o temp
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Novo teste em `backend/tests/contract/test_sync_full.py`: `GET .../sync/full/`
+- [X] T023 [P] [US2] Novo teste em `backend/tests/contract/test_sync_full.py`: `GET .../sync/full/`
       de um deck com 2 tipos de nota retorna `note_types` com os 2 itens e cada nota com o
       `note_type_id` correto
-- [ ] T022 [P] [US2] Novo teste em `backend/tests/contract/test_sync_delta.py`: mudança estrutural
+- [X] T024 [P] [US2] Novo teste em `backend/tests/contract/test_sync_delta.py`: mudança estrutural
       (nº de templates) em **um** dos tipos de nota de um deck multi-tipo dispara
       `full_resync_required=true`, mesmo sem mudança no outro tipo
-- [ ] T023 [P] [US2] Novo teste em `addon/tests/unit/test_delta_apply.py`: payload de `sync/full` com
+- [X] T025 [P] [US2] Novo teste em `addon/tests/unit/test_delta_apply.py`: payload de `sync/full` com
       `note_types` de 2 itens recria os dois tipos de nota locais e associa cada nota pelo
       `note_type_id` correto (estende os testes já existentes em torno de `_apply_note_types`)
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Confirma (sem alteração de código esperada, só validação manual via
+- [X] T026 [US2] Confirma (sem alteração de código esperada, só validação manual via
       `quickstart.md` → Cenário 2) que `GET /api/v1/notes/{id}/` já isola corretamente
       `note_type.templates`/`note_type.css` por nota — contrato já é per-note desde o MVP
       (`specs/001-ankihub-brasil-mvp/contracts/notes.md`); registra o resultado da checagem no PR
@@ -176,25 +190,25 @@ contagem de notas de cada um, batendo com a origem.
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Atualiza `test_detail_exposes_only_non_sensitive_moderator_state` em
+- [X] T027 [P] [US3] Atualiza `test_detail_exposes_only_non_sensitive_moderator_state` em
       `backend/tests/contract/test_catalog_list.py:58-77`: espera `note_types` (lista) em vez de
       `note_type` (objeto único); novo teste no mesmo arquivo cobre deck com 3 tipos de nota e
       confere `note_count` por tipo
-- [ ] T026 [P] [US3] Atualiza o mock de deck detail em `frontend/tests/e2e/p1-flow.spec.ts:117-127`
+- [X] T028 [P] [US3] Atualiza o mock de deck detail em `frontend/tests/e2e/p1-flow.spec.ts:117-127`
       para `note_types: [...]` (lista)
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Substitui `DeckDetailSerializer.get_note_type` por `get_note_types` em
+- [X] T029 [US3] Substitui `DeckDetailSerializer.get_note_type` por `get_note_types` em
       `backend/apps/catalog/serializers.py:24-51`: retorna lista `[{id, name, field_names,
       note_count}]` via uma única query agregada (`Note.objects.filter(deck=deck,
       deleted_at__isnull=True).values("note_type").annotate(count=Count("id"))`), sem N+1 (Decisão 6
       de `research.md`); atualiza `fields` de `DeckDetailSerializer.Meta` (`note_type` → `note_types`)
-- [ ] T028 [US3] Atualiza `DeckDetail` (interface TS) e uso em
+- [X] T030 [US3] Atualiza `DeckDetail` (interface TS) e uso em
       `frontend/src/app/decks/[id]/protection/page.tsx:16-22,211`: consome `note_types[]`; para o
       formulário de proteção de campo, usa a **união** dos `field_names` de todos os tipos (mesma
       regra do backend, T007) — protege por nome de campo, não por tipo
-- [ ] T029 [US3] Atualiza `DeckDetail` (interface TS) e uso em
+- [X] T031 [US3] Atualiza `DeckDetail` (interface TS) e uso em
       `frontend/src/app/decks/[id]/suggest-new-note/page.tsx:18-25,57,139,155,164`: consome
       `note_types[]`; adiciona seletor de tipo de nota quando o deck tem mais de um (envia
       `note_type` no payload de `POST .../suggestions/new-note/`, conforme
@@ -208,9 +222,9 @@ publicável, sincronizável e visível com sua composição real de tipos de not
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T030 [P] Atualiza `specs/001-ankihub-brasil-mvp/data-model.md:38` (nota "pode ser estendido a N
+- [X] T032 [P] Atualiza `specs/001-ankihub-brasil-mvp/data-model.md:38` (nota "pode ser estendido a N
       no pós-MVP") para referenciar esta feature como a extensão realizada
-- [ ] T031 Roda `specs/002-multi-notetype-decks/quickstart.md` ponta-a-ponta (4 cenários) antes de
+- [X] T033 Roda `specs/002-multi-notetype-decks/quickstart.md` ponta-a-ponta (4 cenários) antes de
       considerar a feature pronta
 
 ---
@@ -220,7 +234,7 @@ publicável, sincronizável e visível com sua composição real de tipos de not
 ### Phase Dependencies
 
 - **Foundational (Phase 2)**: sem dependências externas — mas **bloqueia** todas as user stories
-  (T001–T015 antes de qualquer tarefa US1/US2/US3)
+  (T001–T016 antes de qualquer tarefa US1/US2/US3)
 - **User Story 1 (Phase 3)**: depende só de Foundational
 - **User Story 2 (Phase 4)**: depende só de Foundational — não depende de US1 para os testes que
   exercitam o backend/add-on diretamente com fixtures multi-tipo, mas o cenário de validação manual
@@ -232,20 +246,21 @@ publicável, sincronizável e visível com sua composição real de tipos de not
 ### Within Each User Story
 
 - Testes antes da implementação correspondente
-- US1: add-on (T019) e backend (T020) são interdependentes no fluxo real (o add-on é quem monta o
+- US1: add-on (T021) e backend (T022) são interdependentes no fluxo real (o add-on é quem monta o
   payload que o backend consome), mas os arquivos são independentes — podem ser implementados em
   paralelo e integrados depois
-- US3: backend (T027) antes do frontend (T028, T029) — frontend consome o novo formato de resposta
+- US3: backend (T029) antes do frontend (T030, T031) — frontend consome o novo formato de resposta
 
 ### Parallel Opportunities
 
-- T016, T017, T018 (testes de US1) em paralelo
-- T021, T022, T023 (testes de US2) em paralelo
-- T025, T026 (testes de US3) em paralelo
-- T028, T029 (duas telas de frontend distintas) em paralelo entre si, ambas após T027
+- T017, T018, T019, T020 (testes de US1) em paralelo
+- T023, T024, T025 (testes de US2) em paralelo
+- T027, T028 (testes de US3) em paralelo
+- T030, T031 (duas telas de frontend distintas) em paralelo entre si, ambas após T029
 - Dentro da Foundational: T005 pode rodar em paralelo com T006–T014 (arquivo diferente); T006/T007
   (protection) em paralelo com T008–T012 (suggestions) e com T013/T014 (sync) — todos arquivos
-  distintos, sem dependência mútua
+  distintos, sem dependência mútua; T016 (conformidade Princípio VIII) pode rodar em paralelo com
+  T005–T014, mas depende de T001–T004 (migrações/models) já aplicadas
 
 ---
 
@@ -255,6 +270,7 @@ publicável, sincronizável e visível com sua composição real de tipos de not
 Task: "Atualiza test_rejects_deck_with_multiple_note_types em addon/tests/unit/test_publish.py"
 Task: "Novo teste de contrato em backend/tests/contract/test_sync_publish.py (note_types multi-item)"
 Task: "Novo teste de contrato em backend/tests/contract/test_sync_publish.py (note_type_index inválido)"
+Task: "Novo teste de contrato em backend/tests/contract/test_sync_publish.py (note_type malformado, atomicidade)"
 ```
 
 ---
