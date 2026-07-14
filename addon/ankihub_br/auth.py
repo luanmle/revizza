@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 
 import requests
 
+from .main.constants import connection_settings
+
 
 class AuthError(RuntimeError):
     pass
@@ -66,6 +68,10 @@ def store_session(config: dict, session: dict) -> None:
     )
 
 
+def sign_out(config: dict) -> None:
+    config.update(token="", refresh_token="", token_expires_at=0)
+
+
 def ensure_access_token(config: dict) -> tuple[str, bool]:
     token = config.get("token", "")
     expires_at = int(config.get("token_expires_at") or 0)
@@ -74,10 +80,9 @@ def ensure_access_token(config: dict) -> tuple[str, bool]:
     refresh_token = config.get("refresh_token", "")
     if not refresh_token:
         raise AuthError("Faça login no add-on antes de sincronizar.")
+    settings = connection_settings(config)
     session = refresh_session(
-        config.get("supabase_url", ""),
-        config.get("supabase_anon_key", ""),
-        refresh_token,
+        settings["supabase_url"], settings["supabase_anon_key"], refresh_token
     )
     store_session(config, session)
     return config["token"], True

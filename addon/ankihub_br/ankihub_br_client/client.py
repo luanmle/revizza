@@ -71,10 +71,26 @@ class AnkiHubBrClient:
     def get_subscribed_decks(self) -> list[dict]:
         return self.get("/decks/", params={"subscribed": "1"}).json()["results"]
 
+    def test_connection(self) -> dict[str, bool | None]:
+        try:
+            self.get("/health/")
+        except requests.RequestException:
+            return {"api_ok": False, "session_ok": None}
+        if not self.token:
+            return {"api_ok": True, "session_ok": None}
+        try:
+            self.get("/accounts/me/")
+        except requests.RequestException:
+            return {"api_ok": True, "session_ok": False}
+        return {"api_ok": True, "session_ok": True}
+
     def update_subscription_preferences(self, deck_id: str, preferences: dict) -> dict:
         return self.patch(
             f"/decks/{deck_id}/subscriptions/me/", json=preferences
         ).json()
+
+    def unsubscribe(self, deck_id: str) -> None:
+        self.delete(f"/decks/{deck_id}/subscriptions/me/")
 
     def get_deck_delta(self, deck_id: str, since_mod: str | None = None) -> dict:
         params = {"since_mod": since_mod} if since_mod else None

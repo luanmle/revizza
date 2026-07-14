@@ -3,6 +3,7 @@ import time
 import pytest
 
 from ankihub_br import auth
+from ankihub_br.main import constants
 
 
 class FakeResponse:
@@ -79,3 +80,40 @@ def test_expired_access_token_is_refreshed_and_stored(monkeypatch):
 def test_auth_rejects_non_https_supabase_url():
     with pytest.raises(auth.AuthError, match="HTTPS"):
         auth.sign_in("http://project.local", "public-key", "a@b.com", "senha")
+
+
+def test_connection_settings_use_defaults_and_explicit_overrides():
+    assert constants.connection_settings({}) == {
+        "api_base_url": constants.API_BASE_URL,
+        "supabase_url": constants.SUPABASE_URL,
+        "supabase_anon_key": constants.SUPABASE_ANON_KEY,
+    }
+    assert constants.connection_settings(
+        {
+            "api_base_url": "https://api.example.com",
+            "supabase_url": "https://project.example.com",
+            "supabase_anon_key": "public-key",
+        }
+    ) == {
+        "api_base_url": "https://api.example.com",
+        "supabase_url": "https://project.example.com",
+        "supabase_anon_key": "public-key",
+    }
+
+
+def test_sign_out_clears_only_local_session():
+    config = {
+        "token": "access",
+        "refresh_token": "refresh",
+        "token_expires_at": 123,
+        "api_base_url": "https://api.example.com",
+    }
+
+    auth.sign_out(config)
+
+    assert config == {
+        "token": "",
+        "refresh_token": "",
+        "token_expires_at": 0,
+        "api_base_url": "https://api.example.com",
+    }

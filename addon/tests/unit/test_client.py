@@ -90,3 +90,54 @@ def test_signed_media_upload_does_not_send_api_authorization(monkeypatch):
             },
         )
     ]
+
+
+def test_connection_without_session_only_checks_health(monkeypatch):
+    client = AnkiHubBrClient("https://api.example.com")
+    calls = []
+    monkeypatch.setattr(client, "get", lambda path: calls.append(path))
+
+    assert client.test_connection() == {"api_ok": True, "session_ok": None}
+    assert calls == ["/health/"]
+
+
+def test_connection_keeps_api_and_expired_session_signals_distinct(monkeypatch):
+    client = AnkiHubBrClient("https://api.example.com", token="expired")
+
+    def get(path):
+        if path == "/accounts/me/":
+            raise client_module.requests.HTTPError("401")
+
+    monkeypatch.setattr(client, "get", get)
+
+    assert client.test_connection() == {"api_ok": True, "session_ok": False}
+
+
+def test_connection_with_valid_session_checks_both_endpoints(monkeypatch):
+    client = AnkiHubBrClient("https://api.example.com", token="access")
+    calls = []
+    monkeypatch.setattr(client, "get", lambda path: calls.append(path))
+
+    assert client.test_connection() == {"api_ok": True, "session_ok": True}
+    assert calls == ["/health/", "/accounts/me/"]
+
+
+def test_connection_reports_unreachable_api(monkeypatch):
+    client = AnkiHubBrClient("https://api.example.com", token="access")
+
+    def get(_path):
+        raise client_module.requests.ConnectionError("offline")
+
+    monkeypatch.setattr(client, "get", get)
+
+    assert client.test_connection() == {"api_ok": False, "session_ok": None}
+
+
+def test_unsubscribe_deletes_current_subscription(monkeypatch):
+    client = AnkiHubBrClient("https://api.example.com", token="access")
+    calls = []
+    monkeypatch.setattr(client, "delete", lambda path: calls.append(path))
+
+    client.unsubscribe("deck-1")
+
+    assert calls == ["/decks/deck-1/subscriptions/me/"]
