@@ -76,5 +76,7 @@ def test_rejects_deck_with_multiple_note_types(col):
     second.fields = ["C"]
     col.add_note(second, deck_id)
 
-    with pytest.raises(publish.PublishError, match="único tipo"):
+    with pytest.raises(publish.PublishError, match="único tipo") as excinfo:
         publish.build_publish_payload(col, deck_id)
+    assert "Alternativo" in str(excinfo.value)
+    assert col.models.current()["name"] in str(excinfo.value)

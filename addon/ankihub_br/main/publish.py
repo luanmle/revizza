@@ -35,8 +35,12 @@ def build_publish_payload(
     notes = [col.get_note(note_id) for note_id in note_ids]
     notetype_ids = {note.mid for note in notes}
     if len(notetype_ids) != 1:
+        names = sorted(
+            {col.models.get(mid)["name"] for mid in notetype_ids}
+        )
         raise PublishError(
-            "A importação inicial aceita um único tipo de nota por deck."
+            "A importação inicial aceita um único tipo de nota por deck. "
+            f"Encontrados: {', '.join(names)}."
         )
     notetype = notes[0].note_type()
     if not notetype:
