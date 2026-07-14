@@ -1,6 +1,6 @@
-"""Gatilhos de sincronização e menu (T043, FR-031, research.md §5).
+"""Gatilhos de sincronização e menu Revizza.
 
-Três gatilhos: manual (menu Ferramentas), ao abrir o perfil
+Três gatilhos: manual, ao abrir o perfil
 (`gui_hooks.profile_did_open`) e encadeado antes do sync nativo
 (monkey-patch em `AnkiQt._sync_collection_and_media` — único ponto sem hook
 oficial, mesma técnica do add-on real do AnkiHub).
@@ -9,6 +9,7 @@ Este módulo importa `aqt` apenas dentro das funções: os testes headless
 importam o pacote sem um Anki gráfico rodando.
 """
 
+from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from ..ankihub_br_client import AnkiHubBrClient
 from ..db import models as state_db
 from ..errors import report_exception
 from ..main import compat, publish, sync
+from ..main.constants import connection_settings
 
 ADDON_PACKAGE = "ankihub_br"
 PREFERENCE_FIELDS = (
@@ -39,6 +41,52 @@ PREFERENCE_FIELDS = (
         False,
     ),
 )
+_revizza_menu = None
+
+
+def menu_item_states(logged_in: bool) -> tuple[tuple[str, bool], ...]:
+    """Estado puro dos cinco itens do menu (T155)."""
+    return (
+        ("Sair" if logged_in else "Entrar", True),
+        ("Sincronizar agora", logged_in),
+        ("Decks inscritos", logged_in),
+        ("Criar deck Revizza", logged_in),
+        ("Testar conexão", True),
+    )
+
+
+def connection_status_message(result: dict[str, bool | None]) -> str:
+    lines = ["API ok" if result["api_ok"] else "API indisponível"]
+    if result["session_ok"] is not None:
+        lines.append("Sessão ok" if result["session_ok"] else "Sessão expirada")
+    return "\n".join(lines)
+
+
+def _has_session(config: dict) -> bool:
+    return bool(config.get("token") or config.get("refresh_token"))
+
+
+def _run_network(operation, success, failure) -> None:
+    """Executa HTTP fora da thread Qt; callbacks voltam à thread principal."""
+    from aqt import mw
+    from aqt.operations import QueryOp
+
+    def run(_collection):
+        return operation()
+
+    (
+        QueryOp(parent=mw, op=run, success=success)
+        .failure(failure)
+        .without_collection()
+        .run_in_background()
+    )
+
+
+def _show_operation_error(prefix: str, exc: Exception) -> None:
+    from aqt.utils import showWarning
+
+    report_exception(exc)
+    showWarning(f"{prefix}: {exc}")
 
 
 def setup() -> None:
@@ -78,23 +126,46 @@ def _on_profile_close() -> None:
 
 
 def _add_menu(mw) -> None:
-    from aqt.qt import QAction
+    from aqt.qt import QMenu, qconnect
 
-    login_action = QAction("Entrar no AnkiHub Brasil…", mw)
-    login_action.triggered.connect(show_login)
-    mw.form.menuTools.addAction(login_action)
+    global _revizza_menu
+    _revizza_menu = QMenu("&Revizza", parent=mw)
+    _revizza_menu.addAction("Carregando…").setEnabled(False)
+    mw.form.menubar.addMenu(_revizza_menu)
+    qconnect(_revizza_menu.aboutToShow, _refresh_menu)
 
-    publish_action = QAction("Importar deck inicial para o AnkiHub Brasil…", mw)
-    publish_action.triggered.connect(show_publish)
-    mw.form.menuTools.addAction(publish_action)
 
-    action = QAction("Sincronizar AnkiHub Brasil", mw)
-    action.triggered.connect(lambda: sync_all("manual"))
-    mw.form.menuTools.addAction(action)
+def _refresh_menu() -> None:
+    from aqt.qt import qconnect
 
-    preferences_action = QAction("Preferências do AnkiHub Brasil…", mw)
-    preferences_action.triggered.connect(show_preferences)
-    mw.form.menuTools.addAction(preferences_action)
+    if _revizza_menu is None:
+        return
+    _revizza_menu.clear()
+    logged_in = _has_session(_config())
+    callbacks = (
+        show_sign_out if logged_in else show_login,
+        _sync_now,
+        show_subscribed_decks,
+        show_publish,
+        show_test_connection,
+    )
+    for (label, enabled), callback in zip(menu_item_states(logged_in), callbacks):
+        action = _revizza_menu.addAction(label)
+        action.setEnabled(enabled)
+        qconnect(action.triggered, callback)
+
+
+def _sync_now() -> None:
+    sync_all("manual")
+
+
+def show_sign_out() -> None:
+    from aqt.utils import tooltip
+
+    config = _config()
+    auth.sign_out(config)
+    _write_config(config)
+    tooltip("Sessão Revizza encerrada.")
 
 
 def show_login() -> None:
@@ -109,9 +180,8 @@ def show_login() -> None:
     )
     from aqt.utils import showWarning, tooltip
 
-    config = _config()
     dialog = QDialog(mw)
-    dialog.setWindowTitle("Entrar no AnkiHub Brasil")
+    dialog.setWindowTitle("Entrar no Revizza")
     layout = QVBoxLayout(dialog)
     description = QLabel(
         "Use a mesma conta da plataforma web. A senha não será armazenada."
@@ -120,16 +190,10 @@ def show_login() -> None:
     layout.addWidget(description)
 
     form = QFormLayout()
-    api_url = QLineEdit(config.get("api_base_url", ""))
-    supabase_url = QLineEdit(config.get("supabase_url", ""))
-    anon_key = QLineEdit(config.get("supabase_anon_key", ""))
     email = QLineEdit()
     email.setPlaceholderText("voce@exemplo.com")
     password = QLineEdit()
     password.setEchoMode(QLineEdit.EchoMode.Password)
-    form.addRow("URL da API", api_url)
-    form.addRow("URL do Supabase", supabase_url)
-    form.addRow("Chave pública do Supabase", anon_key)
     form.addRow("E-mail", email)
     form.addRow("Senha", password)
     layout.addLayout(form)
@@ -146,25 +210,35 @@ def show_login() -> None:
 
     if not dialog.exec():
         return
-    try:
-        session = auth.sign_in(
-            supabase_url.text().strip(),
-            anon_key.text().strip(),
-            email.text().strip(),
-            password.text(),
-        )
-        config.update(
-            api_base_url=api_url.text().strip(),
-            supabase_url=supabase_url.text().strip(),
-            supabase_anon_key=anon_key.text().strip(),
-        )
-        auth.store_session(config, session)
-        _write_config(config)
-    except Exception as exc:
-        report_exception(exc)
-        showWarning(str(exc))
+    email_value = email.text().strip()
+    password_value = password.text()
+    if not email_value or not password_value:
+        showWarning("Informe e-mail e senha.")
         return
-    tooltip("Login realizado. O add-on já pode sincronizar seus decks.")
+
+    config = _config()
+    settings = connection_settings(config)
+
+    def sign_in():
+        session = auth.sign_in(
+            settings["supabase_url"],
+            settings["supabase_anon_key"],
+            email_value,
+            password_value,
+        )
+        updated_config = dict(config)
+        auth.store_session(updated_config, session)
+        return updated_config
+
+    def signed_in(updated_config):
+        _write_config(updated_config)
+        tooltip("Login realizado. Revizza já pode sincronizar seus decks.")
+
+    _run_network(
+        sign_in,
+        signed_in,
+        partial(_show_operation_error, "Não foi possível entrar"),
+    )
 
 
 def show_publish() -> None:
@@ -181,8 +255,8 @@ def show_publish() -> None:
     from aqt.utils import askUser, showWarning, tooltip
 
     config = _config()
-    if not config.get("api_base_url"):
-        showWarning("Configure a URL da API e faça login antes de importar.")
+    if not _has_session(config):
+        showWarning("Faça login no Revizza antes de criar um deck.")
         return
     decks = [
         deck
@@ -248,7 +322,7 @@ def show_publish() -> None:
         if refreshed:
             _write_config(config)
         client = AnkiHubBrClient(
-            config["api_base_url"],
+            connection_settings(config)["api_base_url"],
             token=token,
             anki_version=compat.anki_version(),
         )
@@ -279,14 +353,51 @@ def show_publish() -> None:
     tooltip(f"Deck importado com {result['note_count']} nota(s).")
 
 
-def _save_preferences(client, controls_by_deck: dict) -> None:
-    for deck_id, controls in controls_by_deck.items():
-        client.update_subscription_preferences(
-            deck_id, {name: control.isChecked() for name, control in controls.items()}
+def _save_subscriptions(
+    client, preferences_by_deck: dict, unsubscribed_deck_ids: set[str]
+) -> None:
+    for deck_id, preferences in preferences_by_deck.items():
+        if deck_id not in unsubscribed_deck_ids:
+            client.update_subscription_preferences(deck_id, preferences)
+    for deck_id in sorted(unsubscribed_deck_ids):
+        client.unsubscribe(deck_id)
+
+
+def show_subscribed_decks() -> None:
+    from aqt.utils import showInfo, showWarning
+
+    config = _config()
+    if not _has_session(config):
+        showWarning("Faça login no Revizza para ver seus decks inscritos.")
+        return
+
+    def load_decks():
+        updated_config = dict(config)
+        token, refreshed = auth.ensure_access_token(updated_config)
+        client = AnkiHubBrClient(
+            connection_settings(updated_config)["api_base_url"],
+            token=token,
+            anki_version=compat.anki_version(),
         )
+        return updated_config if refreshed else None, client.get_subscribed_decks()
+
+    def decks_loaded(result):
+        updated_config, decks = result
+        if updated_config is not None:
+            _write_config(updated_config)
+        if not decks:
+            showInfo("Você ainda não assina nenhum deck.")
+            return
+        _open_subscribed_decks_dialog(decks)
+
+    _run_network(
+        load_decks,
+        decks_loaded,
+        partial(_show_operation_error, "Não foi possível carregar os decks inscritos"),
+    )
 
 
-def show_preferences() -> None:
+def _open_subscribed_decks_dialog(decks: list[dict]) -> None:
     from aqt import mw
     from aqt.qt import (
         QCheckBox,
@@ -294,40 +405,22 @@ def show_preferences() -> None:
         QDialogButtonBox,
         QGroupBox,
         QLabel,
+        QPushButton,
         QScrollArea,
         QVBoxLayout,
         QWidget,
+        qconnect,
     )
-    from aqt.utils import showInfo, showWarning, tooltip
-
-    config = _config()
-    if not config.get("api_base_url"):
-        showWarning("Configure a URL da API e faça login nas configurações do add-on.")
-        return
-
-    try:
-        token, refreshed = auth.ensure_access_token(config)
-        if refreshed:
-            _write_config(config)
-        client = AnkiHubBrClient(
-            config["api_base_url"],
-            token=token,
-            anki_version=compat.anki_version(),
-        )
-        decks = client.get_subscribed_decks()
-    except Exception as exc:
-        report_exception(exc)
-        showWarning(f"Não foi possível carregar as preferências: {exc}")
-        return
-    if not decks:
-        showInfo("Você ainda não assina nenhum deck.")
-        return
+    from aqt.utils import askUser, tooltip
 
     dialog = QDialog(mw)
-    dialog.setWindowTitle("Preferências do AnkiHub Brasil")
+    dialog.setWindowTitle("Decks inscritos — Revizza")
     dialog.resize(480, 520)
     layout = QVBoxLayout(dialog)
-    description = QLabel("Escolha como cada deck assinado será sincronizado.")
+    description = QLabel(
+        "Ajuste a sincronização ou cancele uma inscrição. "
+        "Novas inscrições são feitas na plataforma web."
+    )
     description.setWordWrap(True)
     layout.addWidget(description)
 
@@ -336,6 +429,22 @@ def show_preferences() -> None:
     deck_container = QWidget()
     deck_layout = QVBoxLayout(deck_container)
     controls_by_deck = {}
+    unsubscribed_deck_ids: set[str] = set()
+
+    def mark_unsubscribe(
+        deck_id: str, deck_name: str, controls: dict, button: QPushButton
+    ) -> None:
+        if not askUser(
+            f'Cancelar a inscrição em "{deck_name}"?',
+            parent=dialog,
+        ):
+            return
+        unsubscribed_deck_ids.add(deck_id)
+        for control in controls.values():
+            control.setEnabled(False)
+        button.setText("Cancelamento marcado")
+        button.setEnabled(False)
+
     for deck in decks:
         group = QGroupBox(deck["name"])
         group_layout = QVBoxLayout(group)
@@ -346,7 +455,20 @@ def show_preferences() -> None:
             control.setChecked(bool(preferences.get(name, default)))
             group_layout.addWidget(control)
             controls[name] = control
-        controls_by_deck[str(deck["id"])] = controls
+        deck_id = str(deck["id"])
+        controls_by_deck[deck_id] = controls
+        unsubscribe_button = QPushButton("Cancelar inscrição")
+        qconnect(
+            unsubscribe_button.clicked,
+            partial(
+                mark_unsubscribe,
+                deck_id,
+                deck["name"],
+                controls,
+                unsubscribe_button,
+            ),
+        )
+        group_layout.addWidget(unsubscribe_button)
         deck_layout.addWidget(group)
     deck_layout.addStretch()
     scroll.setWidget(deck_container)
@@ -364,13 +486,56 @@ def show_preferences() -> None:
 
     if not dialog.exec():
         return
-    try:
-        _save_preferences(client, controls_by_deck)
-    except Exception as exc:
-        report_exception(exc)
-        showWarning(f"Não foi possível salvar as preferências: {exc}")
-        return
-    tooltip("Preferências de sincronização salvas.")
+    preferences_by_deck = {
+        deck_id: {name: control.isChecked() for name, control in controls.items()}
+        for deck_id, controls in controls_by_deck.items()
+    }
+    config = _config()
+
+    def save_changes():
+        updated_config = dict(config)
+        token, refreshed = auth.ensure_access_token(updated_config)
+        client = AnkiHubBrClient(
+            connection_settings(updated_config)["api_base_url"],
+            token=token,
+            anki_version=compat.anki_version(),
+        )
+        _save_subscriptions(client, preferences_by_deck, unsubscribed_deck_ids)
+        return updated_config if refreshed else None
+
+    def changes_saved(updated_config):
+        if updated_config is not None:
+            _write_config(updated_config)
+        tooltip("Decks inscritos atualizados.")
+
+    _run_network(
+        save_changes,
+        changes_saved,
+        partial(_show_operation_error, "Não foi possível salvar os decks inscritos"),
+    )
+
+
+def show_test_connection() -> None:
+    from aqt.utils import showInfo
+
+    config = _config()
+
+    def test_connection():
+        client = AnkiHubBrClient(
+            connection_settings(config)["api_base_url"],
+            token=config.get("token") or None,
+            anki_version=compat.anki_version(),
+        )
+        return client.test_connection()
+
+    def connection_tested(result):
+        showInfo(connection_status_message(result))
+
+    _run_network(
+        test_connection,
+        connection_tested,
+        partial(_show_operation_error, "Não foi possível testar a conexão"),
+    )
 
 
 def _wrap_native_sync() -> None:
@@ -403,11 +568,9 @@ def sync_all(trigger: str) -> None:
         return
 
     config = _config()
-    if not config.get("api_base_url"):
+    if not _has_session(config):
         if trigger == "manual":
-            showWarning(
-                "Configure a URL da API e faça login nas configurações do add-on."
-            )
+            showWarning("Faça login no Revizza antes de sincronizar.")
         return
 
     sync.mark_sync_started()
@@ -416,7 +579,7 @@ def sync_all(trigger: str) -> None:
         if refreshed:
             _write_config(config)
         client = AnkiHubBrClient(
-            config["api_base_url"],
+            connection_settings(config)["api_base_url"],
             token=token,
             anki_version=compat.anki_version(),
             sync_run_id=uuid4().hex,
@@ -442,4 +605,4 @@ def sync_all(trigger: str) -> None:
     finally:
         sync.mark_sync_finished()
     if synced or trigger == "manual":
-        tooltip(f"AnkiHub Brasil: {synced} deck(s) sincronizado(s).")
+        tooltip(f"Revizza: {synced} deck(s) sincronizado(s).")

@@ -19,6 +19,6 @@ def is_supported_anki() -> bool:
 
 def unsupported_message() -> str:
     return (
-        f"AnkiHub Brasil suporta apenas o Anki {SUPPORTED_LTS_PREFIX}.x (LTS). "
+        f"Revizza suporta apenas o Anki {SUPPORTED_LTS_PREFIX}.x (LTS). "
         f"Sua versão: {anki_version()}. Atualize o Anki para sincronizar."
     )

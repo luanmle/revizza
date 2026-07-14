@@ -1,6 +1,6 @@
 from ankihub_br.ankihub_br_client import AnkiHubBrClient
 from ankihub_br.ankihub_br_client import client as client_module
-from ankihub_br.gui import _save_preferences
+from ankihub_br.gui import _save_subscriptions
 
 
 def test_client_rejects_non_https_base_url():
@@ -18,14 +18,7 @@ def test_client_sends_sync_run_id():
     assert client.session.headers["X-Sync-Run-ID"] == "run-1"
 
 
-def test_preferences_are_patched_per_subscription(monkeypatch):
-    class Control:
-        def __init__(self, checked):
-            self.checked = checked
-
-        def isChecked(self):
-            return self.checked
-
+def test_subscription_changes_are_saved_per_deck(monkeypatch):
     class Response:
         def json(self):
             return {"saved": True}
@@ -38,16 +31,21 @@ def test_preferences_are_patched_per_subscription(monkeypatch):
         lambda path, **kwargs: calls.append((path, kwargs["json"])) or Response(),
     )
 
-    _save_preferences(
+    unsubscribed = []
+    monkeypatch.setattr(client, "unsubscribe", unsubscribed.append)
+
+    _save_subscriptions(
         client,
         {
             "deck-1": {
-                "sync_trigger_manual": Control(True),
-                "sync_trigger_on_anki_open": Control(False),
-                "sync_trigger_chained_native": Control(True),
-                "delete_notes_on_removal": Control(False),
-            }
+                "sync_trigger_manual": True,
+                "sync_trigger_on_anki_open": False,
+                "sync_trigger_chained_native": True,
+                "delete_notes_on_removal": False,
+            },
+            "deck-2": {},
         },
+        {"deck-2"},
     )
 
     assert calls == [
@@ -61,6 +59,7 @@ def test_preferences_are_patched_per_subscription(monkeypatch):
             },
         )
     ]
+    assert unsubscribed == ["deck-2"]
 
 
 def test_signed_media_upload_does_not_send_api_authorization(monkeypatch):
