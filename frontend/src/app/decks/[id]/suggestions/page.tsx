@@ -8,6 +8,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import { Inbox, MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { api, ApiError, type Paginated } from "@/lib/api-client";
@@ -115,32 +116,49 @@ function formatDate(iso: string): string {
 function CommentsThread({ suggestionId }: { suggestionId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ["suggestion-comments", suggestionId];
-  // ponytail: só a primeira página da thread; paginar quando threads longas existirem
-  const { data, isPending } = useQuery({
+  // FR-024/US5/AC5: thread cronológica completa via cursor + "Carregar mais"
+  const thread = useInfiniteQuery({
     queryKey,
-    queryFn: () =>
-      api.get<Paginated<Comment>>(`/suggestions/${suggestionId}/comments/`),
+    queryFn: ({ pageParam }) => api.get<Paginated<Comment>>(pageParam),
+    initialPageParam: `/suggestions/${suggestionId}/comments/`,
+    getNextPageParam: (lastPage) => nextPath(lastPage.next),
   });
 
   const [body, setBody] = useState("");
   const post = useMutation({
     mutationFn: () =>
-      api.post(`/suggestions/${suggestionId}/comments/`, { body }),
-    onSuccess: () => {
+      api.post<Comment>(`/suggestions/${suggestionId}/comments/`, { body }),
+    onSuccess: (comment) => {
       setBody("");
-      queryClient.invalidateQueries({ queryKey });
+      // o comentário recém-enviado fica visível mesmo além da página carregada;
+      // o dedupe abaixo o reposiciona quando a página real dele for aberta
+      queryClient.setQueryData<InfiniteData<Paginated<Comment>>>(
+        queryKey,
+        (data) =>
+          data && {
+            ...data,
+            pages: data.pages.map((page, index) =>
+              index === data.pages.length - 1
+                ? { ...page, results: [...page.results, comment] }
+                : page,
+            ),
+          },
+      );
     },
   });
 
+  const loaded = thread.data?.pages.flatMap((page) => page.results) ?? [];
+  const comments = [...new Map(loaded.map((c) => [c.id, c])).values()];
+
   return (
     <div className="flex flex-col gap-3 border-t pt-3">
-      {isPending && <Skeleton className="h-12 w-full" />}
-      {data?.results.length === 0 && (
+      {thread.isPending && <Skeleton className="h-12 w-full" />}
+      {thread.isSuccess && comments.length === 0 && (
         <p className="text-sm text-muted-foreground">
           Nenhum comentário ainda.
         </p>
       )}
-      {data?.results.map((comment) => (
+      {comments.map((comment) => (
         <div key={comment.id} className="text-sm">
           <p className="text-muted-foreground">
             <span className="font-mono">
@@ -152,6 +170,20 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
           <ReportButton commentId={comment.id} suggestionThread />
         </div>
       ))}
+      {thread.hasNextPage && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="self-start"
+          disabled={thread.isFetchingNextPage}
+          onClick={() => thread.fetchNextPage()}
+        >
+          {thread.isFetchingNextPage
+            ? "Carregando…"
+            : "Carregar mais comentários"}
+        </Button>
+      )}
       <form
         className="flex flex-col gap-2"
         onSubmit={(e) => {
@@ -189,14 +221,18 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
 function SuggestionCard({
   suggestion,
   isModerator,
+  meId,
   onChanged,
 }: {
   suggestion: Suggestion;
   isModerator: boolean;
+  meId: string | null;
   onChanged: () => void;
 }) {
   const [threadOpen, setThreadOpen] = useState(false);
   const status = STATUS_BADGE[suggestion.status];
+  // FR-023/US5/AC4: voto é sinal de terceiros — sem controles na própria sugestão
+  const isOwn = !!suggestion.author && suggestion.author === meId;
 
   const vote = useMutation({
     mutationFn: (value: "like" | "dislike") =>
@@ -275,24 +311,41 @@ function SuggestionCard({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Curtir sugestão"
-            disabled={vote.isPending}
-            onClick={() => vote.mutate("like")}
-          >
-            <ThumbsUp aria-hidden /> {suggestion.likes_count}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Descurtir sugestão"
-            disabled={vote.isPending}
-            onClick={() => vote.mutate("dislike")}
-          >
-            <ThumbsDown aria-hidden /> {suggestion.dislikes_count}
-          </Button>
+          {isOwn ? (
+            <span className="flex items-center gap-3 px-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <ThumbsUp aria-hidden className="size-4" />
+                <span className="sr-only">Curtidas:</span>
+                {suggestion.likes_count}
+              </span>
+              <span className="flex items-center gap-1">
+                <ThumbsDown aria-hidden className="size-4" />
+                <span className="sr-only">Descurtidas:</span>
+                {suggestion.dislikes_count}
+              </span>
+            </span>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Curtir sugestão"
+                disabled={vote.isPending}
+                onClick={() => vote.mutate("like")}
+              >
+                <ThumbsUp aria-hidden /> {suggestion.likes_count}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label="Descurtir sugestão"
+                disabled={vote.isPending}
+                onClick={() => vote.mutate("dislike")}
+              >
+                <ThumbsDown aria-hidden /> {suggestion.dislikes_count}
+              </Button>
+            </>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -540,6 +593,7 @@ export default function CommunitySuggestionsPage() {
             key={suggestion.id}
             suggestion={suggestion}
             isModerator={isModerator}
+            meId={me?.id ?? null}
             onChanged={refetchSuggestions}
           />
         ))}

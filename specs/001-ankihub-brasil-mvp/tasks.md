@@ -425,8 +425,8 @@ Com múltiplos desenvolvedores, após Foundational:
 - [ ] T121 Add a representative 10k-note search performance check for the 500ms budget and optimize the query only if it fails per FR-010 / SC-005 (missing)
 - [ ] T122 Add a focused page-transition and note-preview performance check for the 500ms typical-load budget per FR-054 (missing)
 - [ ] T123 Add the planned Playwright P1 flow covering cadastro→assinatura→sugestão→moderação in `frontend/tests/e2e/` per plan: testing strategy (missing)
-- [ ] T124 Reject votes by a suggestion's own author in `backend/apps/suggestions/views.py` and hide self-vote controls in the Community Suggestions UI per US5/AC4 / FR-023 (partial)
-- [ ] T125 Persist, sanitize, display in the diff, and apply proposed tag additions/updates for single and bulk change suggestions per US4/AC3, US4/AC5 / FR-013 (partial)
+- [X] T124 Reject votes by a suggestion's own author in `backend/apps/suggestions/views.py` and hide self-vote controls in the Community Suggestions UI per US5/AC4 / FR-023 (partial)
+- [X] T125 Persist, sanitize, display in the diff, and apply proposed tag additions/updates for single and bulk change suggestions per US4/AC3, US4/AC5 / FR-013 (partial)
 
 ---
 
@@ -439,15 +439,27 @@ Com múltiplos desenvolvedores, após Foundational:
 - [ ] T128 [CRITICAL] Add a repeatable `.ankiaddon` build that vendors `peewee`, `requests`, and `sentry-sdk` into a package-local import path and prove the built add-on imports without development-site packages per plan: add-on vendoring constraint / US3 (missing)
 - [ ] T129 [CRITICAL] Allowlist configured frontend origins in Django and add an authenticated CORS preflight check for the documented separate frontend/backend topology per FR-002 / plan: independent frontend-backend deployments (missing)
 - [ ] T130 Complete password recovery with a Supabase recovery callback, new-password form, configured redirect, and focused browser check proving the user can choose a new password after opening the email link per US1/AC3 / FR-003 (partial)
-- [ ] T131 Replace removed `django.utils.timezone.utc` usage in `backend/apps/sync/views.py` with supported UTC handling and add a contract test for a valid naive ISO-8601 `since_mod` per FR-034 (partial)
-- [ ] T132 Make catalog tag/recommendation and note-field search handle accented pt-BR text correctly on PostgreSQL JSONB, with production-like contract cases for terms such as `licitação` per FR-007 / FR-010 / FR-056 (partial)
+- [X] T131 Replace removed `django.utils.timezone.utc` usage in `backend/apps/sync/views.py` with supported UTC handling and add a contract test for a valid naive ISO-8601 `since_mod` per FR-034 (partial)
+- [X] T132 Make catalog tag/recommendation and note-field search handle accented pt-BR text correctly on PostgreSQL JSONB, with production-like contract cases for terms such as `licitação` per FR-007 / FR-010 / FR-056 (partial)
 - [ ] T133 Rate-limit initial deck publish and media signed-URL issuance per authenticated user without blocking the legitimate multi-file fan-out of one sync run, with focused abuse checks per FR-052 / Constitution IV (partial)
-- [ ] T134 Reject empty, no-op, and unknown-field/tag change suggestions server-side for both individual and bulk submissions while preserving valid shared corrections per US4/AC4 / FR-020 (partial)
-- [ ] T135 Serialize moderation decisions by locking and rechecking the suggestion inside the decision transaction, with a focused check proving concurrent accept/reject attempts cannot overwrite a terminal status per FR-027 / US5/AC9 (partial)
+- [X] T134 Reject empty, no-op, and unknown-field/tag change suggestions server-side for both individual and bulk submissions while preserving valid shared corrections per US4/AC4 / FR-020 (partial)
+- [X] T135 Serialize moderation decisions by locking and rechecking the suggestion inside the decision transaction, with a focused check proving concurrent accept/reject attempts cannot overwrite a terminal status per FR-027 / US5/AC9 (partial)
 - [ ] T136 Add the minimal Heroku runtime entrypoint and production server dependency, pin the planned Python runtime, and align `backend/.env.example` plus quickstart.md with the Supavisor pooled `DATABASE_URL` and actual Supabase key variable names per plan: Heroku/Supavisor deployment (missing)
 - [ ] T137 Provision or document an idempotent private Supabase Storage `media` bucket and verify backend-generated signed upload/download URLs against it per FR-036 / plan: Supabase Storage (missing)
-- [ ] T138 Make the Community Suggestions `created_before` date include the entire selected calendar day and add a boundary contract case per FR-022 / US5/AC2 (partial)
+- [X] T138 Make the Community Suggestions `created_before` date include the entire selected calendar day and add a boundary contract case per FR-022 / US5/AC2 (partial)
 - [ ] T139 Remove public moderator email addresses from general deck detail/catalog responses and UI, replacing them with the minimum non-sensitive role signal needed for moderation controls per Constitution III (unrequested)
-- [ ] T140 Eliminate per-suggestion target-note and vote-count queries in the Community Suggestions list using batched prefetch/annotations, with a bounded-query-count check per FR-054 (partial)
-- [ ] T141 Paginate or load additional suggestion-thread comments so comments beyond the first chronological page, including a newly posted 51st comment, remain visible per US5/AC5 / FR-024 (partial)
+- [X] T140 Eliminate per-suggestion target-note and vote-count queries in the Community Suggestions list using batched prefetch/annotations, with a bounded-query-count check per FR-054 (partial)
+- [X] T141 Paginate or load additional suggestion-thread comments so comments beyond the first chronological page, including a newly posted 51st comment, remain visible per US5/AC5 / FR-024 (partial)
 - [ ] T142 Restore clean configured quality checks by fixing the current Ruff errors and Black/Prettier drift while excluding generated artifacts from formatting checks per plan: linting/formatting (partial)
+
+---
+
+## Phase 21: Convergence
+
+**Purpose**: Lacunas adicionais detectadas no estado atual do código em 2026-07-13 (pós T101–T115), sem duplicar os 27 itens ainda abertos em T116–T142
+
+- [ ] T143 Map underscores back to spaces when resolving per-note `AnkiHubBR_Protect::Nome_Do_Campo` tags in `addon/ankihub_br/protection/__init__.py` so multi-word field names are actually protected during delta/full apply, with a focused test using a field name containing a space per US11/AC2 / FR-041 (partial)
+- [ ] T144 Back the sync-run lock and django-ratelimit with a shared cross-process cache (e.g. Django database cache) configured in `backend/config/settings/` so the 10-second one-run-per-user boundary holds under a multi-worker production server per FR-032 / Constitution IV (partial)
+- [ ] T145 Configure an env-driven production email backend (console backend in dev) and make the report-removal admin action in `backend/apps/discussions/admin.py` resilient so a notification failure cannot abort the action mid-queryset after content deletion per FR-050 (partial)
+- [ ] T146 Add an optional display name ("nome") to the User profile — registration/profile endpoints and screens, the JSON data export, and comment/suggestion author display in place of opaque ID prefixes per FR-047 / US7/AC1 / US5/AC3 (partial)
+- [X] T147 Decrement `Deck.note_count` when a deletion suggestion is accepted in `backend/apps/suggestions/decisions.py`, with one contract assertion keeping catalog counts accurate per FR-006 (partial)

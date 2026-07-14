@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api-client";
 import RichTextEditor from "@/components/RichTextEditor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +33,7 @@ const CATEGORIES = [
 interface NoteDetail {
   id: string;
   field_values: Record<string, string>;
+  tags: string[];
 }
 
 interface DeckDetail {
@@ -70,11 +72,16 @@ export default function SuggestChangePage() {
   const [justification, setJustification] = useState("");
   // overlay: só os campos que o usuário editou; o valor efetivo cai no atual da nota
   const [proposed, setProposed] = useState<Record<string, string>>({});
+  const [tagsInput, setTagsInput] = useState("");
   const [formError, setFormError] = useState("");
 
   const changedFields = Object.keys(proposed).filter(
     (field) => note && proposed[field] !== note.field_values[field],
   );
+  // FR-013 (Nova tag/Tag atualizada): só o que ainda não existe na nota
+  const newTags = [
+    ...new Set(tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean)),
+  ].filter((tag) => !note?.tags.includes(tag));
 
   const submit = useMutation({
     mutationFn: () =>
@@ -84,6 +91,7 @@ export default function SuggestChangePage() {
         proposed_field_values: Object.fromEntries(
           changedFields.map((field) => [field, proposed[field]]),
         ),
+        tags: newTags,
       }),
   });
 
@@ -91,8 +99,10 @@ export default function SuggestChangePage() {
     e.preventDefault();
     if (!category) return setFormError("Escolha o tipo de mudança.");
     if (!justification.trim()) return setFormError("A justificativa é obrigatória.");
-    if (changedFields.length === 0)
-      return setFormError("Altere pelo menos um campo para sugerir uma mudança.");
+    if (changedFields.length === 0 && newTags.length === 0)
+      return setFormError(
+        "Altere pelo menos um campo ou adicione uma tag nova para sugerir uma mudança.",
+      );
     setFormError("");
     submit.mutate();
   }
@@ -190,7 +200,24 @@ export default function SuggestChangePage() {
             </div>
           ))}
 
-          {changedFields.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="proposed-tags">
+              Adicionar tags (separadas por vírgula)
+            </Label>
+            <Input
+              id="proposed-tags"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="lei-14133, licitação"
+            />
+            {note.tags.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Tags atuais: {note.tags.join(", ")}
+              </p>
+            )}
+          </div>
+
+          {(changedFields.length > 0 || newTags.length > 0) && (
             <section aria-label="Comparação das mudanças" className="flex flex-col gap-4">
               <h2 className="text-lg font-semibold">Comparação</h2>
               {changedFields.map((field) => (
@@ -215,6 +242,25 @@ export default function SuggestChangePage() {
                   </div>
                 </div>
               ))}
+              {newTags.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-medium">Tags</p>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div className="rounded-lg bg-destructive/10 p-3">
+                      <p className="mb-1 text-sm font-medium text-muted-foreground">
+                        Atual
+                      </p>
+                      <p>{note.tags.join(", ") || "(sem tags)"}</p>
+                    </div>
+                    <div className="rounded-lg bg-success/10 p-3">
+                      <p className="mb-1 text-sm font-medium text-muted-foreground">
+                        Sugerido
+                      </p>
+                      <p>{[...note.tags, ...newTags].join(", ")}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

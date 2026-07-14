@@ -82,7 +82,14 @@ export default function SuggestBulkPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [category, setCategory] = useState<string | null>(null);
   const [justification, setJustification] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [formError, setFormError] = useState("");
+
+  // FR-017/FR-013: a correção compartilhada do lote são as tags propostas
+  // (edição compartilhada de campos fica com a T118)
+  const proposedTags = [
+    ...new Set(tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean)),
+  ];
 
   const notes = notesQuery.data?.pages.flatMap((p) => p.results) ?? [];
 
@@ -101,6 +108,7 @@ export default function SuggestBulkPage() {
         note_ids: [...selected],
         change_category: category,
         justification,
+        tags: proposedTags,
       }),
   });
 
@@ -109,6 +117,8 @@ export default function SuggestBulkPage() {
     if (selected.size === 0) return setFormError("Selecione pelo menos uma nota.");
     if (!category) return setFormError("Escolha o tipo de mudança.");
     if (!justification.trim()) return setFormError("A justificativa é obrigatória.");
+    if (proposedTags.length === 0)
+      return setFormError("Informe pelo menos uma tag para aplicar às notas.");
     setFormError("");
     submit.mutate();
   }
@@ -158,8 +168,8 @@ export default function SuggestBulkPage() {
 
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">Sugestão em lote</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        O mesmo tipo de mudança e justificativa serão aplicados a todas as notas
-        selecionadas, em uma única sugestão.
+        O mesmo tipo de mudança, tags e justificativa serão aplicados a todas as
+        notas selecionadas, em uma única sugestão.
       </p>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-6">
@@ -238,6 +248,18 @@ export default function SuggestBulkPage() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="proposed-tags">
+            Tags a aplicar (separadas por vírgula)
+          </Label>
+          <Input
+            id="proposed-tags"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            placeholder="lei-14133, licitação"
+          />
         </div>
 
         <div className="flex flex-col gap-2">
