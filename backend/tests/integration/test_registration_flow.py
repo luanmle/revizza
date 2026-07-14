@@ -1,5 +1,6 @@
 """Integração US1: cadastro → login (token Supabase) → alterar consentimento (spec US1)."""
 
+import time
 import uuid
 
 import jwt
@@ -10,6 +11,7 @@ pytestmark = pytest.mark.django_db
 
 def test_register_login_and_toggle_consent(api_client, settings, monkeypatch):
     settings.SUPABASE_JWT_SECRET = "test-secret"
+    settings.SUPABASE_URL = "https://test.supabase.co"
     auth_id = str(uuid.uuid4())
     monkeypatch.setattr(
         "apps.accounts.supabase_gateway.sign_up", lambda email, password: auth_id
@@ -25,7 +27,13 @@ def test_register_login_and_toggle_consent(api_client, settings, monkeypatch):
 
     # 2. "login": Supabase emite o JWT; a API só o verifica (FR-002)
     token = jwt.encode(
-        {"sub": auth_id, "email": "fluxo@example.com", "aud": "authenticated"},
+        {
+            "sub": auth_id,
+            "email": "fluxo@example.com",
+            "aud": "authenticated",
+            "iss": "https://test.supabase.co/auth/v1",
+            "exp": int(time.time()) + 3600,
+        },
         "test-secret",
         algorithm="HS256",
     )

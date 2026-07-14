@@ -1,6 +1,8 @@
 """Contract test: GET /media/{content_hash}/ (contracts/sync.md, FR-036)."""
 
 import pytest
+from django.test import override_settings
+from django.core.cache import cache
 
 from apps.catalog.models import Subscription
 from apps.notes.models import MediaFile
@@ -44,3 +46,22 @@ def test_media_requires_subscription_to_owning_deck(auth_client, media_file):
 
 def test_media_unknown_hash_is_404(auth_client):
     assert auth_client.get(f"/api/v1/media/{'f' * 64}/").status_code == 404
+
+
+@override_settings(RATELIMIT_MEDIA_RATE="3/m")
+def test_media_url_issuance_is_rate_limited_per_user(
+    auth_client, user, media_file, monkeypatch
+):
+    cache.clear()
+    Subscription.objects.create(user=user, deck=media_file.deck)
+    monkeypatch.setattr(
+        "apps.sync.views.media.signed_download_url", lambda path: "https://s/x"
+    )
+
+    # fan-out legítimo de um sync run passa dentro do rate configurado (T133)
+    for _ in range(3):
+        assert auth_client.get(f"/api/v1/media/{HASH}/").status_code == 200
+
+    blocked = auth_client.get(f"/api/v1/media/{HASH}/")
+    assert blocked.status_code == 429
+    assert blocked.headers["Retry-After"] == "60"

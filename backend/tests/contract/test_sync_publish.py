@@ -3,6 +3,8 @@
 import uuid
 
 import pytest
+from django.test import override_settings
+from django.core.cache import cache
 
 from apps.catalog.models import Deck
 
@@ -80,3 +82,18 @@ def test_republish_is_rejected_and_keeps_web_content_authoritative(auth_client):
     deck = Deck.objects.get(pk=deck_id)
     assert deck.name == "Direito Penal"
     assert len(deck.note_type.templates) == 1
+
+
+@override_settings(RATELIMIT_PUBLISH_RATE="1/h")
+def test_publish_is_rate_limited_per_user(auth_client, mock_upload_url):
+    cache.clear()
+    first = auth_client.post(
+        f"/api/v1/decks/{uuid.uuid4()}/publish/", _payload(), format="json"
+    )
+    blocked = auth_client.post(
+        f"/api/v1/decks/{uuid.uuid4()}/publish/", _payload(), format="json"
+    )
+
+    assert first.status_code == 201
+    assert blocked.status_code == 429
+    assert blocked.headers["Retry-After"] == "3600"

@@ -1,5 +1,6 @@
 """Contract test: GET /accounts/me/ e PATCH /accounts/me/consents/ (contracts/accounts.md)."""
 
+import time
 import uuid
 
 import jwt
@@ -42,6 +43,7 @@ def test_patch_consents_has_immediate_effect(auth_client, user):
 def test_suspended_user_gets_403(api_client, settings, db):
     # força o caminho real de autenticação (não force_authenticate) para validar o soft-ban
     settings.SUPABASE_JWT_SECRET = "test-secret"
+    settings.SUPABASE_URL = "https://test.supabase.co"
     suspended = User.objects.create(
         auth_id=uuid.uuid4(), email="banido@example.com", is_suspended=True
     )
@@ -50,6 +52,8 @@ def test_suspended_user_gets_403(api_client, settings, db):
             "sub": str(suspended.auth_id),
             "email": suspended.email,
             "aud": "authenticated",
+            "iss": "https://test.supabase.co/auth/v1",
+            "exp": int(time.time()) + 3600,
         },
         "test-secret",
         algorithm="HS256",

@@ -19,10 +19,16 @@ API nem o modelo de dados — veja os arquivos correspondentes.
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # preencher DATABASE_URL (Supabase), SUPABASE_URL, SUPABASE_SERVICE_KEY
+cp .env.example .env   # preencher DATABASE_URL (connection string "Session pooler"/Supavisor do
+                       # dashboard), SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (secret key
+                       # sb_secret_...); SUPABASE_JWT_SECRET só para tokens HS256 legados
 python manage.py migrate
 python manage.py runserver
 ```
+
+Em produção (Heroku) o `backend/Procfile` define o dyno `web` (gunicorn) e a release phase
+(`migrate` + `createcachetable` + `check_data_api_isolation`); a versão do Python vem de
+`backend/.python-version`.
 
 Validação rápida: `GET http://localhost:8000/api/v1/decks/` deve responder `200` com
 `{"next": null, "previous": null, "results": []}` em um banco vazio (ver `contracts/api-conventions.md`).

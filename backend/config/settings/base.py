@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "apps.accounts",
     "apps.catalog",
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # antes de qualquer middleware que responda
     "django.middleware.security.SecurityMiddleware",
     "config.middleware.ApiVersionCompatibilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -83,9 +85,20 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Console por padrão (dev/teste); prod troca por SMTP via env (T145 / FR-050)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL", "AnkiHub Brasil <nao-responda@localhost>"
 )
+
+# --- CORS (T129): frontend e backend são deploys separados (plan) ---
+CORS_ALLOWED_ORIGINS = [
+    origin
+    for origin in os.environ.get(
+        "DJANGO_CORS_ALLOWED_ORIGINS", "http://localhost:3000"
+    ).split(",")
+    if origin
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -116,6 +129,9 @@ RATELIMIT_SYNC_RATE = (
     f"1/{RATELIMIT_SYNC_WINDOW_SECONDS}s"  # FR-032: uma execução por usuário
 )
 RATELIMIT_SUGGESTION_RATE = "20/m"  # FR-052
+RATELIMIT_PUBLISH_RATE = "10/h"  # T133: publish é evento único por deck
+# T133: generoso o bastante para o fan-out de mídia de um sync run legítimo
+RATELIMIT_MEDIA_RATE = "120/m"
 
 # --- Sentry (T013): só inicializa se houver DSN configurado ---
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")

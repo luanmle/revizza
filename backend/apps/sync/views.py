@@ -8,7 +8,9 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.utils.decorators import method_decorator
 from django_ratelimit.core import is_ratelimited
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +20,25 @@ from apps.notes.models import MediaFile, Note, NoteType
 from apps.notes.sanitize import sanitize_field_values
 
 from . import media
+
+
+def _publish_rate(_group, _request):
+    return settings.RATELIMIT_PUBLISH_RATE
+
+
+def _media_rate(_group, _request):
+    return settings.RATELIMIT_MEDIA_RATE
+
+
+def _rate_limit_response(request, retry_after: str):
+    """T133/FR-052: 429 quando o django-ratelimit marcou a requisição."""
+    if getattr(request, "limited", False):
+        return Response(
+            {"detail": "Limite de requisições atingido. Tente novamente em breve."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": retry_after},
+        )
+    return None
 
 
 def _legacy_full_fallback_key(request, deck_id) -> str:
@@ -167,7 +188,14 @@ class FullView(_SubscriberSyncView):
 class MediaDownloadView(APIView):
     """GET /media/{content_hash}/ — URL pré-assinada, só se o hash mudou localmente (FR-036)."""
 
+    # rate por minuto largo o suficiente para o fan-out de mídia de um sync run (T133)
+    @method_decorator(
+        ratelimit(group="media-download", key="user", rate=_media_rate, block=False)
+    )
     def get(self, request, content_hash):
+        limited = _rate_limit_response(request, retry_after="60")
+        if limited:
+            return limited
         media_file = MediaFile.objects.filter(
             content_hash=content_hash, deck__subscriptions__user=request.user
         ).first()
@@ -195,7 +223,19 @@ class PublishView(APIView):
     moderador original. Depois disso, a web é a única fonte de mudanças.
     """
 
+    @method_decorator(
+        ratelimit(
+            group="deck-publish",
+            key="user",
+            rate=_publish_rate,
+            method="POST",
+            block=False,
+        )
+    )
     def post(self, request, deck_id):
+        limited = _rate_limit_response(request, retry_after="3600")
+        if limited:
+            return limited
         data = request.data
         note_type_data = data.get("note_type") or {}
         if not data.get("name") or not note_type_data.get("field_names"):
@@ -230,9 +270,7 @@ class PublishView(APIView):
                 subject_tags=data.get("subject_tags", []),
                 note_type=note_type,
             )
-            DeckModerator.objects.create(
-                deck=deck, user=request.user, status="active"
-            )
+            DeckModerator.objects.create(deck=deck, user=request.user, status="active")
 
             for item in data.get("notes", []):
                 fields = sanitize_field_values(item.get("field_values", {}))  # FR-015

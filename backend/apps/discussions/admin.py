@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.core.mail import send_mail
 
 from apps.accounts.models import User
@@ -25,6 +25,7 @@ class ReportAdmin(admin.ModelAdmin):
 
     @admin.action(description="Remover conteúdo denunciado e notificar autor")
     def remove_reported_content(self, request, queryset):
+        mail_failures = []
         for report in queryset.select_related("comment__author"):
             comment = report.comment
             author = comment.author if comment else None
@@ -38,12 +39,24 @@ class ReportAdmin(admin.ModelAdmin):
                 update_fields=["comment", "status", "reviewed_by", "updated_at"]
             )
             if author and author.email:
-                send_mail(
-                    "Conteúdo removido no AnkiHub Brasil",
-                    f"Seu conteúdo foi removido após revisão. Motivo: {reason}",
-                    settings.DEFAULT_FROM_EMAIL,
-                    [author.email],
-                )
+                # T145: o conteúdo já foi removido; falha de e-mail não pode
+                # abortar a ação no meio do queryset (FR-050)
+                try:
+                    send_mail(
+                        "Conteúdo removido no AnkiHub Brasil",
+                        f"Seu conteúdo foi removido após revisão. Motivo: {reason}",
+                        settings.DEFAULT_FROM_EMAIL,
+                        [author.email],
+                    )
+                except Exception:
+                    mail_failures.append(author.email)
+        if mail_failures:
+            self.message_user(
+                request,
+                "Conteúdo removido, mas a notificação por e-mail falhou para: "
+                + ", ".join(mail_failures),
+                level=messages.WARNING,
+            )
 
     @admin.action(description="Suspender autor do conteúdo denunciado")
     def suspend_content_author(self, request, queryset):
@@ -51,9 +64,7 @@ class ReportAdmin(admin.ModelAdmin):
         for report in queryset.select_related("comment__author"):
             if report.comment and report.comment.author:
                 report.comment.author.is_suspended = True
-                report.comment.author.save(
-                    update_fields=["is_suspended", "updated_at"]
-                )
+                report.comment.author.save(update_fields=["is_suspended", "updated_at"])
             report.status = Report.Status.REVIEWED
             report.reviewed_by = reviewer
             report.save(update_fields=["status", "reviewed_by", "updated_at"])
