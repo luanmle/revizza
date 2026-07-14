@@ -123,3 +123,16 @@ def test_delta_rejects_invalid_since_mod(auth_client, subscribed_deck):
     response = auth_client.get(_url(subscribed_deck), {"since_mod": "ontem"})
 
     assert response.status_code == 400
+
+
+def test_delta_accepts_naive_since_mod_as_utc(auth_client, subscribed_deck):
+    """FR-034: ISO 8601 sem timezone é tratado como UTC (T131)."""
+    now = timezone.now()
+    _make_note(subscribed_deck, "old", now - timedelta(days=2))
+    _make_note(subscribed_deck, "new", now)
+
+    naive = (now - timedelta(days=1)).replace(tzinfo=None).isoformat()
+    response = auth_client.get(_url(subscribed_deck), {"since_mod": naive})
+
+    assert response.status_code == 200
+    assert {n["guid"] for n in response.json()["notes"]} == {"new"}

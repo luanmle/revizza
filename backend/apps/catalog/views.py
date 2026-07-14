@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.base import json_escaped as _json_escaped
+from apps.base import json_text_forms
 from apps.notes.views import _require_subscription
 from config.pagination import DefaultCursorPagination
 
@@ -46,14 +46,16 @@ class DeckListView(generics.ListAPIView):
 
         tag = self.request.query_params.get("tag")
         if tag:
-            qs = qs.filter(tags_text__icontains=f'"{_json_escaped(tag)}"')  # FR-007
+            tag_q = Q()  # FR-007; formas escapada e literal (FR-056, pt-BR acentuado)
+            for form in json_text_forms(tag):
+                tag_q |= Q(tags_text__icontains=f'"{form}"')
+            qs = qs.filter(tag_q)
 
         user = self.request.user
         match = Q()
-        if user.target_career:
-            match |= Q(tags_text__icontains=_json_escaped(user.target_career))
-        if user.target_board:
-            match |= Q(tags_text__icontains=_json_escaped(user.target_board))
+        for needle in filter(None, [user.target_career, user.target_board]):
+            for form in json_text_forms(needle):
+                match |= Q(tags_text__icontains=form)
         if match:
             recommended = Case(
                 When(match, then=Value(1)),

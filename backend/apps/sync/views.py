@@ -1,5 +1,7 @@
 """API de sincronização consumida exclusivamente pelo add-on (contracts/sync.md)."""
 
+from datetime import UTC
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
@@ -121,7 +123,8 @@ class DeltaView(_SubscriberSyncView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if timezone.is_naive(since):
-                since = timezone.make_aware(since, timezone.utc)
+                # datetime.UTC: django.utils.timezone.utc foi removido no Django 5
+                since = since.replace(tzinfo=UTC)
 
         structure_changed_at = deck.note_type.structure_changed_at
         if since and structure_changed_at and structure_changed_at > since:

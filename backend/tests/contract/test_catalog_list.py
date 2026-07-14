@@ -72,3 +72,47 @@ def test_detail_includes_moderators(auth_client, user, make_deck):
 
 def test_list_requires_authentication(api_client):
     assert api_client.get(URL).status_code == 401
+
+
+def _store_raw_json_tags(deck, raw: str):
+    """Simula o jsonb do Postgres, que normaliza \\uXXXX para o literal UTF-8."""
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE catalog_deck SET subject_tags = %s WHERE id = %s",
+            [raw, deck.pk.hex],
+        )
+
+
+def test_filter_by_accented_tag_matches_escaped_storage(auth_client, make_deck):
+    """FR-007/FR-056: sqlite persiste \\u00e7 — busca acentuada encontra (T132)."""
+    make_deck(name="Licitações", subject_tags=["licitação"])
+
+    response = auth_client.get(URL, {"tag": "licitação"})
+
+    assert [d["name"] for d in response.json()["results"]] == ["Licitações"]
+
+
+def test_filter_by_accented_tag_matches_literal_utf8_storage(auth_client, make_deck):
+    """FR-007/FR-056: jsonb do Postgres guarda o literal UTF-8 (T132)."""
+    deck = make_deck(name="Licitações", subject_tags=[])
+    _store_raw_json_tags(deck, '["licitação"]')
+
+    response = auth_client.get(URL, {"tag": "licitação"})
+
+    assert [d["name"] for d in response.json()["results"]] == ["Licitações"]
+
+
+def test_recommendation_matches_accented_profile_in_literal_storage(
+    auth_client, user, make_deck
+):
+    user.target_board = "câmara"
+    user.save()
+    make_deck(name="Popular", subject_tags=["Português"], subscriber_count=100)
+    deck = make_deck(name="Câmara", subject_tags=[], subscriber_count=1)
+    _store_raw_json_tags(deck, '["concurso câmara"]')
+
+    names = [d["name"] for d in auth_client.get(URL).json()["results"]]
+
+    assert names == ["Câmara", "Popular"]  # FR-008 com acento no perfil (T132)

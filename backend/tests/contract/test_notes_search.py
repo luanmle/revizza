@@ -45,6 +45,26 @@ def test_search_by_term_matches_field_content(auth_client, deck, make_note):
     assert _ids(response) == {str(hit.id)}
 
 
+
+def test_search_accented_term_matches_literal_utf8_storage(
+    auth_client, deck, make_note
+):
+    """FR-010/FR-056: jsonb do Postgres guarda o literal UTF-8 (T132)."""
+    from django.db import connection
+
+    hit = make_note(deck=deck, field_values={"Frente": "x", "Verso": "y"})
+    make_note(deck=deck)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE notes_note SET field_values = %s WHERE id = %s",
+            ['{"Frente": "Prazo de licitação", "Verso": "15 dias"}', hit.pk.hex],
+        )
+
+    response = auth_client.get(_url(deck), {"q": "licitação"})
+
+    assert _ids(response) == {str(hit.id)}
+
+
 def test_search_by_exact_note_id(auth_client, deck, make_note):
     hit = make_note(deck=deck)
     make_note(deck=deck)

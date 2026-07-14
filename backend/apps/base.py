@@ -6,9 +6,18 @@ import uuid
 from django.db import models
 
 
-def json_escaped(text: str) -> str:
-    """JSONField persiste não-ASCII escapado (\\u00ea); escapar a agulha da busca igual."""
-    return json.dumps(text, ensure_ascii=True)[1:-1]
+def json_text_forms(text: str) -> list[str]:
+    """Formas do texto dentro do JSON persistido, para busca via icontains (FR-007, FR-010).
+
+    sqlite guarda a saída de json.dumps com não-ASCII escapado (\\u00e7); o jsonb do
+    Postgres normaliza para o literal UTF-8. Buscar pelas duas formas cobre os dois
+    backends sem SQL por vendor.
+    """
+    forms = [
+        json.dumps(text, ensure_ascii=True)[1:-1],
+        json.dumps(text, ensure_ascii=False)[1:-1],
+    ]
+    return list(dict.fromkeys(forms))
 
 
 class BaseModel(models.Model):

@@ -2,14 +2,14 @@
 
 import uuid
 
-from django.db.models import TextField
+from django.db.models import Q, TextField
 from django.db.models.functions import Cast
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from apps.base import json_escaped
+from apps.base import json_text_forms
 from apps.catalog.models import Deck, Subscription
 from config.pagination import DefaultCursorPagination
 
@@ -45,8 +45,11 @@ class DeckNoteListView(generics.ListAPIView):
         if term:
             # ponytail: match textual no JSON dos campos, como no catálogo;
             # trocar por full-text/jsonb se decks de 10k notas ficarem lentos (FR-010)
+            term_q = Q()  # formas escapada e literal (FR-056, pt-BR acentuado)
+            for form in json_text_forms(term):
+                term_q |= Q(fields_text__icontains=form)
             qs = qs.annotate(fields_text=Cast("field_values", TextField())).filter(
-                fields_text__icontains=json_escaped(term)
+                term_q
             )
         return qs
 
