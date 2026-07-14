@@ -141,6 +141,28 @@ def test_pending_moderator_forbidden(auth_client, user, make_deck):
     assert deck.name == "Original"
 
 
+def test_non_subscriber_sees_updated_metadata_after_patch(
+    auth_client, api_client, user, make_deck, make_user
+):
+    deck = make_deck(name="Original", description="Antiga", subject_tags=["antigo"])
+    _make_moderator(deck, user)
+
+    response = auth_client.patch(
+        f"/api/v1/decks/{deck.id}/",
+        {"name": "Nome Novo", "description": "Nova", "subject_tags": ["novo"]},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+
+    other = make_user("outro@example.com")
+    api_client.force_authenticate(other)
+    r = api_client.get(f"/api/v1/decks/{deck.id}/")
+    body = r.json()
+    assert body["name"] == "Nome Novo"
+    assert body["description"] == "Nova"
+    assert body["subject_tags"] == ["novo"]
+
+
 def test_unauthenticated_rejected(api_client, make_deck):
     deck = make_deck(name="Original")
 

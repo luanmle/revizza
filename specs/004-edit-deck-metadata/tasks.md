@@ -151,16 +151,16 @@ behavior beyond what US1 already returns via `GET`).
 
 ### Tests for User Story 3
 
-- [ ] T016 [P] [US3] Contract test: after a moderator's `PATCH`, a second (non-subscribed, non-
+- [X] T016 [P] [US3] Contract test: after a moderator's `PATCH`, a second (non-subscribed, non-
       moderator) authenticated user's `GET /decks/{id}/` returns the updated
       `name`/`description`/`subject_tags`, in `backend/tests/contract/test_catalog_update.py`.
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Add a moderator-only "Editar deck" entry point on
+- [X] T017 [US3] Add a moderator-only "Editar deck" entry point on
       `frontend/src/app/decks/[id]/page.tsx`, gated on `is_moderator` (same field/pattern the page
       already reads for other moderator-only UI), linking to the new edit route.
-- [ ] T018 [US3] Create `frontend/src/app/decks/[id]/edit/page.tsx`: form for `name`/`description`/
+- [X] T018 [US3] Create `frontend/src/app/decks/[id]/edit/page.tsx`: form for `name`/`description`/
       `subject_tags`, submitting `PATCH /api/v1/decks/{id}/` (contracts/decks-update.md), redirecting
       back to the deck detail page on success and showing the `400`/`403` `detail` message on error.
 
@@ -172,9 +172,9 @@ behavior beyond what US1 already returns via `GET`).
 
 **Purpose**: Final validation across all stories.
 
-- [ ] T019 Run `quickstart.md` scenarios 1-4 end to end against a local backend (migration applied)
+- [X] T019 Run `quickstart.md` scenarios 1-4 end to end against a local backend (migration applied)
       to confirm SC-001/SC-002/SC-003 hold.
-- [ ] T020 [P] Re-run `/ponytail-review` (Constitution Principle VI) on the diff to confirm no
+- [X] T020 [P] Re-run `/ponytail-review` (Constitution Principle VI) on the diff to confirm no
       speculative abstraction was introduced (e.g., no new permission class for a single call site,
       per research.md Decision 2).
 

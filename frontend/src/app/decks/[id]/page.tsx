@@ -120,20 +120,32 @@ export default function DeckDetailPage() {
             </p>
           )}
         </div>
-        {deck.is_subscribed ? (
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => unsubscribe.mutate()}
-            disabled={busy}
-          >
-            {unsubscribe.isPending ? "Cancelando…" : "Cancelar inscrição"}
-          </Button>
-        ) : (
-          <Button size="lg" onClick={() => subscribe.mutate()} disabled={busy}>
-            {subscribe.isPending ? "Inscrevendo…" : "Inscrever-se"}
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {deck.is_moderator && (
+            <Button
+              variant="outline"
+              size="lg"
+              nativeButton={false}
+              render={<Link href={`/decks/${id}/edit`} />}
+            >
+              Editar deck
+            </Button>
+          )}
+          {deck.is_subscribed ? (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => unsubscribe.mutate()}
+              disabled={busy}
+            >
+              {unsubscribe.isPending ? "Cancelando…" : "Cancelar inscrição"}
+            </Button>
+          ) : (
+            <Button size="lg" onClick={() => subscribe.mutate()} disabled={busy}>
+              {subscribe.isPending ? "Inscrevendo…" : "Inscrever-se"}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
