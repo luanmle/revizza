@@ -75,3 +75,17 @@ def test_full_requires_subscription(auth_client, make_deck):
     deck = make_deck()
 
     assert auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").status_code == 403
+
+
+def test_full_deck_name_decoupled_from_editable_name(auth_client, user, make_deck):
+    """research.md Decisão 4 / FR-006: deck_name do payload vem de anki_deck_name,
+    imune a edições futuras de Deck.name — provado antes mesmo do endpoint de edição existir."""
+    deck = make_deck(name="Nome Original")
+    Subscription.objects.create(user=user, deck=deck)
+    assert deck.anki_deck_name == "Nome Original"
+
+    deck.name = "Nome Editado"
+    deck.save(update_fields=["name"])
+
+    body = auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").json()
+    assert body["deck_name"] == "Nome Original"

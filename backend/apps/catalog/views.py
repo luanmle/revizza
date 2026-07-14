@@ -17,6 +17,7 @@ from .serializers import (
     DeckModeratorSerializer,
     DeckSerializer,
     DeckSubscribedSerializer,
+    DeckUpdateSerializer,
     ModeratorInviteSerializer,
     SubscriptionSerializer,
 )
@@ -70,6 +71,24 @@ class DeckListView(generics.ListAPIView):
 class DeckDetailView(generics.RetrieveAPIView):
     queryset = Deck.objects.all()
     serializer_class = DeckDetailSerializer
+
+    def patch(self, request, *args, **kwargs):
+        deck = self.get_object()
+        if not DeckModerator.objects.filter(
+            deck=deck,
+            user=request.user,
+            status=DeckModerator.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {"detail": "Apenas moderadores ativos podem editar este deck."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = DeckUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field, value in serializer.validated_data.items():
+            setattr(deck, field, value)
+        deck.save(update_fields=list(serializer.validated_data))
+        return Response(DeckDetailSerializer(deck, context={"request": request}).data)
 
 
 class SubscriptionCreateView(APIView):

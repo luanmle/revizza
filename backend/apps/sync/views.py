@@ -100,7 +100,7 @@ def _deck_payload(deck: Deck, notes) -> dict:
         seen.setdefault(note.note_type_id, note.note_type)
     return {
         "deck_id": str(deck.id),
-        "deck_name": deck.name,
+        "deck_name": deck.anki_deck_name,
         # ordem de aplicação fixa no add-on: tipos de nota → notas → subdecks (FR-034)
         "note_types": [_note_type_payload(nt) for nt in seen.values()],
         "notes": note_items,
@@ -170,7 +170,7 @@ class DeltaView(_SubscriberSyncView):
             return Response(
                 {
                     "deck_id": str(deck.id),
-                    "deck_name": deck.name,
+                    "deck_name": deck.anki_deck_name,
                     "full_resync_required": True,
                     "note_types": [],
                     "notes": [],
@@ -291,6 +291,7 @@ class PublishView(APIView):
             deck = Deck.objects.create(
                 id=deck_id,
                 name=data["name"],
+                anki_deck_name=data["name"],
                 description=data.get("description", ""),
                 subject_tags=data.get("subject_tags", []),
             )

@@ -5,6 +5,7 @@ from apps.base import BaseModel
 
 class Deck(BaseModel):
     name = models.CharField(max_length=200)
+    anki_deck_name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     subject_tags = models.JSONField(default=list)  # filtro do catálogo (FR-007)
     # sem FK de tipo de nota: um deck pode ter N tipos, derivados das suas notas via

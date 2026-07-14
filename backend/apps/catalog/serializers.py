@@ -1,6 +1,8 @@
 from django.db.models import Count
 from rest_framework import serializers
 
+from apps.notes.sanitize import sanitize_html
+
 from .models import Deck, DeckModerator, Subscription
 
 
@@ -63,6 +65,32 @@ class DeckDetailSerializer(DeckSerializer):
             }
             for row in counts
         ]
+
+
+class DeckUpdateSerializer(serializers.Serializer):
+    """PATCH /decks/{id}/ (contracts/decks-update.md, FR-002/003/005/007/008)."""
+
+    name = serializers.CharField(required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    subject_tags = serializers.ListField(
+        child=serializers.CharField(allow_blank=True), required=False
+    )
+
+    def validate_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("O título não pode ficar em branco.")
+        return value
+
+    def validate_description(self, value):
+        return sanitize_html(value)
+
+    def validate_subject_tags(self, value):
+        deduped = []
+        for tag in value:
+            tag = tag.strip()
+            if tag and tag not in deduped:
+                deduped.append(tag)
+        return deduped
 
 
 class DeckSubscribedSerializer(DeckSerializer):
