@@ -15,16 +15,20 @@ def col(tmp_path):
     collection.close()
 
 
-def _payload(front="Oficial", back="Resposta", tags=None):
+def _payload(front="Oficial", back="Resposta", tags=None, back_name="Verso"):
     return {
         "deck_name": "Direito",
         "note_types": [
             {
                 "id": NT_ID,
                 "name": "Básico BR",
-                "field_names": ["Frente", "Verso"],
+                "field_names": ["Frente", back_name],
                 "templates": [
-                    {"name": "Card 1", "qfmt": "{{Frente}}", "afmt": "{{Verso}}"}
+                    {
+                        "name": "Card 1",
+                        "qfmt": "{{Frente}}",
+                        "afmt": "{{%s}}" % back_name,
+                    }
                 ],
                 "css": "",
             }
@@ -33,7 +37,7 @@ def _payload(front="Oficial", back="Resposta", tags=None):
             {
                 "guid": "n1",
                 "note_type_id": NT_ID,
-                "field_values": {"Frente": front, "Verso": back},
+                "field_values": {"Frente": front, back_name: back},
                 "tags": tags or ["oficial"],
                 "anki_deck_path": "",
                 "mod": "2026-07-13T00:00:00+00:00",
@@ -81,3 +85,17 @@ def test_per_note_protection_tag_preserves_named_field(col):
     updated = _note(col)
     assert updated.fields[1] == "Verso pessoal"
     assert "AnkiHubBR_Protect::Verso" in updated.tags
+
+
+def test_per_note_protection_tag_decodes_multi_word_field(col):
+    field_name = "Notas pessoais"
+    sync.apply_delta(col, _payload(back_name=field_name))
+    note = _note(col)
+    note.fields[1] = "Conteúdo pessoal"
+    note.tags.append("AnkiHubBR_Protect::Notas_pessoais")
+    col.update_note(note)
+
+    sync.apply_delta(col, _payload(back="Conteúdo oficial novo", back_name=field_name))
+
+    updated = _note(col)
+    assert updated.fields[1] == "Conteúdo pessoal"

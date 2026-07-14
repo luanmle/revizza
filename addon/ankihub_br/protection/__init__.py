@@ -8,7 +8,7 @@ def protected_field_names(
     local_tags: list[str], configured_fields: set[str]
 ) -> set[str]:
     per_note = {
-        tag.removeprefix(FIELD_TAG_PREFIX)
+        tag.removeprefix(FIELD_TAG_PREFIX).replace("_", " ")
         for tag in local_tags
         if tag.startswith(FIELD_TAG_PREFIX) and tag != FIELD_TAG_PREFIX
     }

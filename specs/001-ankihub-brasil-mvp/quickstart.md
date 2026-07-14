@@ -50,11 +50,11 @@ catálogo) somente via teclado, sem mouse (FR-055).
 
 ```bash
 cd addon
-pip install -r requirements.txt -t ankihub_br/lib   # vendoriza peewee/requests junto ao add-on
-ln -s "$(pwd)/ankihub_br" "$(python -c 'import aqt; print(aqt.mw.pm.addonFolder())' 2>/dev/null || echo '<pasta de add-ons do Anki>')/ankihub_br"
+python build.py  # gera e valida dist/ankihub_br.ankiaddon com dependências vendorizadas
 ```
 
-Reabrir o Anki Desktop; configurar a URL do backend local nas preferências do add-on.
+Instalar `dist/ankihub_br.ankiaddon` pelo gerenciador de add-ons do Anki Desktop, reabrir o Anki e
+configurar a URL do backend local nas preferências do add-on.
 
 ## Cenário de validação 1 — Sync inicial (User Story 1, 2 e 3)
 
