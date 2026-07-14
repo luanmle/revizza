@@ -75,10 +75,15 @@ pois o AnkiWeb não força atualização imediata do add-on instalado (PRD §4.6
 depender de `pip install` em runtime — toda dependência de terceiro é vendorizada no `.ankiaddon`;
 código frontend/backend segue a disciplina ponytail (mínimo necessário, sem abstração especulativa)
 e consulta documentação atual via context7 antes de usar API de biblioteca (Constituição v1.1.0,
-Princípio VI).
+Princípio VI); a URL da API é uma constante embutida no pacote do add-on, ausente da interface —
+o usuário só informa e-mail/senha, override só via `config.json` avançado do Anki (FR-058, US-14,
+ver research.md #12); um único endpoint público sem autenticação (`GET /api/v1/health/`, sem
+tocar o banco) existe só para o "Testar conexão" do add-on (FR-059, ver research.md #16); a
+importação inicial persiste deck/tipo(s) de nota/notas em uma única transação atômica, com upload
+de mídia em melhor esforço fora dela (FR-062, ver data-model.md).
 
 **Scale/Scope**: Baseline de MVP de ~500 usuários e 20 decks nos primeiros 3 meses (SC-001); decks
-de até 10 mil notas (RNF-002); 13 user stories / 54 requisitos funcionais do spec.
+de até 10 mil notas (RNF-002); 14 user stories / 62 requisitos funcionais do spec.
 
 ## Constitution Check
 
@@ -86,7 +91,7 @@ de até 10 mil notas (RNF-002); 13 user stories / 54 requisitos funcionais do sp
 
 | Princípio | Avaliação | Como o plano atende |
 |---|---|---|
-| I. Parity Over Reinvention | PASS | API segue as convenções já observadas do AnkiHub original: DRF `CursorPagination` (campo `next`), rotas com barra final, endpoint de sugestão em lote (`bulk-change-suggestions`), convenção de tag `AnkiHubBR_Protect::<Campo>`. A estrutura interna do add-on (`main/db/*_client/gui`), os hooks usados (`profile_did_open`/`sync_did_finish` + monkey-patch pontual em `AnkiQt._sync_collection_and_media`) e o versionamento de API via header `Accept` também replicam o add-on/backend real (PRD §4.6) em vez de redesenhados do zero. |
+| I. Parity Over Reinvention | PASS | API segue as convenções já observadas do AnkiHub original: DRF `CursorPagination` (campo `next`), rotas com barra final, endpoint de sugestão em lote (`bulk-change-suggestions`), convenção de tag `AnkiHubBR_Protect::<Campo>`. A estrutura interna do add-on (`main/db/*_client/gui`), os hooks usados (`profile_did_open`/`sync_did_finish` + monkey-patch pontual em `AnkiQt._sync_collection_and_media`) e o versionamento de API via header `Accept` também replicam o add-on/backend real (PRD §4.6) em vez de redesenhados do zero. O menu top-level "Revizza" no menubar (US-14, FR-057) replica literalmente `addon/1322529746/gui/menu.py::setup_ankihub_menu` (`QMenu` + `menubar.addMenu` + refresh em `aboutToShow`); a URL de API embutida como constante (FR-058) confirmou-se mais fiel ao original (`settings.py::DEFAULT_API_URL`) do que a decisão anterior deste plano supunha — corrigida em research.md #12. |
 | II. Unidirectional Sync — Web Is the Source of Truth | PASS | O add-on permite somente a importação inicial autenticada em um deck inexistente; a rota responde `409` a qualquer republicação. Depois do primeiro snapshot oficial, toda contribuição de conteúdo passa pelo fluxo de sugestão. Backup automático + reversão em falha (FR-039) e fallback para resync completo (FR-035) são parte do design da Fase 1 (ver data-model.md e contracts/sync.md). |
 | III. Privacy & LGPD Compliance by Design | PASS | Consentimentos granulares, exclusão com carência de 7 dias e exportação em JSON são campos/endpoints de primeira classe no data model e nos contratos (accounts.md), não uma adição posterior. |
 | IV. Secure by Default | PASS | `nh3` sanitiza todo HTML de campo rich-text no backend antes de persistir (FR-015); HTTPS obrigatório via Heroku/Supabase (ambos forçam TLS); `django-ratelimit` nos endpoints de sync e sugestão (FR-052); senha nunca gerenciada por código próprio (Supabase Auth). |
@@ -105,6 +110,14 @@ Technology Constraints (Princípio V). `NoteType.css`/`templates` (já modelados
 para o isolamento do preview de nota exigido por FR-011 (Princípio VII) sem novo campo — o
 `GET /api/v1/notes/{id}/` já expõe o necessário para montar o `srcDoc` do iframe isolado
 (research.md #13).
+
+**Reavaliação pós-clarificação de US-14/FR-057–062** (2026-07-14): nenhuma violação nova. O menu
+Revizza e o diálogo "Decks inscritos" reutilizam os endpoints de `catalog.md` já existentes — nenhuma
+rota nova no domínio de assinatura (Princípio V). O único endpoint novo é `GET /api/v1/health/`,
+público e sem estado (Princípio IV — não é uma superfície de dados nova, não expande o modelo de
+ameaças). A atomicidade da publicação (FR-062) e o lock de decisão de moderação (FR-027) são
+comportamento de transação de banco já suportado pelo Django ORM (`transaction.atomic`,
+`select_for_update`), sem nova dependência (Princípio VI).
 
 ## Project Structure
 
@@ -133,7 +146,7 @@ specs/001-ankihub-brasil-mvp/
 
 ```text
 backend/
-├── config/                  # settings Django (base/dev/prod), urls raiz, wsgi/asgi
+├── config/                  # settings Django (base/dev/prod), urls raiz, wsgi/asgi, health_check (US-14)
 ├── apps/
 │   ├── accounts/             # User profile, consentimentos LGPD, exclusão/exportação (US-01, US-13)
 │   ├── catalog/               # Deck, DeckModerator, Subscription (US-02, US-08, US-11)
@@ -169,10 +182,10 @@ addon/
 │   ├── main/                            # lógica de negócio pura: sync, delta, proteção, sugestões, mídia
 │   ├── db/                                # cache local peewee/SQLite (estado de sync por nota)
 │   ├── ankihub_br_client/                  # única camada que fala HTTP com o backend (auth, retry/backoff)
-│   ├── gui/                                  # menu, diálogos de sugestão/config/login (Qt)
+│   ├── gui/                                  # menu top-level Revizza no menubar (US-14), diálogos de login/decks/sugestão (Qt)
 │   └── vendor/                                 # dependências de terceiros vendorizadas no build (peewee, requests)
 └── tests/
-    └── unit/                                    # pytest-anki — simula gui_hooks e Collection real
+    └── unit/                                    # pytest puro contra anki.collection.Collection headless (ver Testing acima)
 ```
 
 **Structure Decision**: Três projetos independentes (Option 2 estendida) porque o produto exige três

@@ -104,3 +104,20 @@ Anki (`NoteType.css`) governa sozinho a aparência do template.
 2. Na web, aceitar uma sugestão que altera esse mesmo campo nessa nota.
 3. Sincronizar novamente no Anki Desktop — confirmar que o conteúdo do campo protegido **não** foi
    sobrescrito, enquanto os demais campos da nota refletem a mudança aceita (FR-042).
+
+## Cenário de validação 4 — Menu Revizza e conectividade do add-on (User Story 14)
+
+1. Abrir o Anki Desktop com o add-on instalado e sem sessão ativa — confirmar que existe um menu
+   top-level "Revizza" no menubar (fora de Ferramentas) e que Entrar/Sair, Sincronizar agora, Decks
+   inscritos e Criar deck Revizza aparecem desabilitados; Entrar e Testar conexão continuam
+   habilitados (FR-057).
+2. Acionar "Testar conexão" sem login — confirmar que reporta apenas o sinal de alcance da API
+   (`GET /api/v1/health/`), sem exigir sessão (FR-059).
+3. Fazer login pelo diálogo — confirmar que apenas e-mail e senha são pedidos, nenhum campo de URL
+   da API, URL do Supabase ou chave pública (FR-058).
+4. Acionar "Testar conexão" já logado — confirmar os dois sinais distintos: "API ok" e "Sessão ok"
+   (FR-059).
+5. Abrir "Decks inscritos" — confirmar que lista os decks assinados e permite, por deck, cancelar
+   inscrição, ajustar os gatilhos de sincronização e alterar a preferência de remoção (apagar vs.
+   marcar), sem oferecer inscrição em deck novo nem um item de menu "Preferências" separado
+   (FR-060).

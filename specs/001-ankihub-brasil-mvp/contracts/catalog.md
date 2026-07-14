@@ -1,4 +1,4 @@
-# Contract: Catalog & Subscriptions (US-02, US-08 parte web)
+# Contract: Catalog & Subscriptions (US-02, US-08 parte web, US-14 diálogo "Decks inscritos" do add-on)
 
 Ver convenções gerais em `api-conventions.md`.
 
@@ -9,3 +9,9 @@ Ver convenções gerais em `api-conventions.md`.
 | POST | `/api/v1/decks/{id}/subscriptions/` | usuário | Cria assinatura (vínculo usuário↔deck); corpo opcional define preferências de gatilho de sync | FR-009 |
 | PATCH | `/api/v1/decks/{id}/subscriptions/me/` | usuário | Atualiza preferências de sincronização (manual/auto-abertura/encadeado) e preferência de remoção local | US-08 |
 | DELETE | `/api/v1/decks/{id}/subscriptions/me/` | usuário | Cancela assinatura | FR-009 |
+
+**Consumo pelo add-on (FR-060, clarificado 2026-07-14)**: o diálogo "Decks inscritos" do menu Revizza
+lista as assinaturas do usuário (via `GET /api/v1/decks/` filtrado no cliente pelas que já assina, sem
+rota dedicada nova), permite `DELETE .../subscriptions/me/` (cancelar) e `PATCH .../subscriptions/me/`
+(preferência de remoção — apagar vs. marcar). Inscrever-se em deck novo (`POST`) permanece exclusivo
+da web — o diálogo do add-on não expõe essa ação (FR-060).

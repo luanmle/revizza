@@ -146,14 +146,21 @@ fixados pelo PRD e pela Constituição (Django+DRF, Next.js, Supabase, Heroku, a
   não dá esse controle ao autor do add-on); versionar via path (`/v1/`, `/v2/`) em vez de header
   (rejeitado — diverge da convenção já observada no AnkiHub original, Princípio I).
 
-## 12. URL do backend configurável no add-on
+## 12. URL do backend embutida no add-on (revisado em 2026-07-14 — FR-058)
 
-- **Decision**: URL do backend é um valor de configuração do add-on (`config.json`, tela de
-  configuração nativa do Anki), nunca hardcoded — mesmo padrão do AnkiHub original (`ANKIHUB_APP_URL`).
-- **Rationale**: Permite apontar o mesmo add-on para staging/produção sem rebuild, e é a mesma
-  convenção já usada pelo produto de referência (Princípio I).
-- **Alternatives considered**: Hardcoded por ambiente de build (rejeitado — exige builds separados
-  só para trocar de ambiente, sem necessidade).
+- **Decision**: A URL de produção da API é uma constante única do pacote (`ankihub_br/main/constants.py`
+  ou equivalente), ausente da interface — o usuário só informa e-mail/senha. Override só é possível via
+  `config.json` avançado do Anki (`api_base_url`), lido apenas se explicitamente preenchido; sem isso,
+  a constante embutida prevalece.
+- **Rationale**: Replica com mais fidelidade o AnkiHub original do que a decisão anterior deste
+  documento supunha — `addon/1322529746/settings.py` hardcoda `DEFAULT_API_URL`/`DEFAULT_APP_URL` como
+  constantes e só aceita override por `os.getenv("ANKIHUB_APP_URL")` ou `build_config`, nunca por um
+  campo de UI comum (Princípio I). Também resolve FR-058 (clarificado em 2026-07-14): o usuário do MVP
+  não deve configurar servidor manualmente, só logar.
+- **Alternatives considered**: Campo de URL visível nas preferências (decisão original deste
+  documento, revertida — expõe complexidade de servidor a um usuário final que nunca precisa dela e
+  diverge do padrão real do AnkiHub); hardcoded por ambiente de build sem nenhum override (rejeitado —
+  perde o hook de dev/teste que o `config.json` avançado já oferece de graça).
 
 ## 13. Isolamento visual do preview de nota — FR-011 (clarificado em 2026-07-13)
 
@@ -191,3 +198,34 @@ fixados pelo PRD e pela Constituição (Django+DRF, Next.js, Supabase, Heroku, a
   acessíveis como tabs/dialog que o FR-055 exige); outra biblioteca de componentes sem MCP
   integrado ao editor (perderia o ganho de produtividade de adicionar componentes por pedido
   em linguagem natural).
+
+## 15. Menu "Revizza" no menubar do Anki — US14, FR-057 (2026-07-14)
+
+- **Decision**: `aqt.mw.form.menubar.addMenu(QMenu("&Revizza", parent=aqt.mw))` no `entry_point.py`,
+  substituindo os `mw.form.menuTools.addAction(...)` atuais em `gui/__init__.py`. Um item placeholder
+  desabilitado ("Carregando...") é adicionado antes de qualquer outro para o menu não ficar vazio (o
+  macOS esconde `QMenu` vazio). O conteúdo real é populado/atualizado no sinal `aboutToShow` do menu
+  (não na inicialização), reconstruindo os itens habilitados/desabilitados conforme o estado de sessão
+  atual — cobre AC2 (itens autenticados desabilitados sem login) sem estado duplicado.
+- **Rationale**: É exatamente o padrão do add-on real (`addon/1322529746/gui/menu.py::setup_ankihub_menu`
+  + `refresh_ankihub_menu`) — Princípio I. Reconstruir no `aboutToShow` evita sincronizar manualmente o
+  estado do menu a cada login/logout/sync; o Qt já dispara o sinal toda vez que o usuário abre o menu.
+- **Alternatives considered**: Manter em Ferramentas com submenu (rejeitado — é exatamente o que o
+  clarify de FR-057 pediu para mudar); atualizar itens habilitados via callback de login/logout em vez
+  de `aboutToShow` (rejeitado — múltiplos pontos de atualização a manter sincronizados em vez de um só).
+
+## 16. Endpoint público de health check — US14, FR-059 (2026-07-14)
+
+- **Decision**: `GET /api/v1/health/` sem autenticação (`AllowAny`, fora do `DEFAULT_PERMISSION_CLASSES`
+  padrão `IsAuthenticated`), sem tocar o banco — só confirma que o processo Django responde. Registrado
+  direto em `config/urls.py` (`config/views.py::health_check`), sem app Django novo. A validação de
+  sessão (segundo sinal de FR-059, "Sessão ok/expirada") reusa qualquer endpoint autenticado já
+  existente e leve (`GET /api/v1/accounts/me/`) — nenhum endpoint novo para isso.
+- **Rationale**: FR-059 exige alcance da API mesmo sem login; o `DEFAULT_PERMISSION_CLASSES` atual
+  bloquearia isso em qualquer rota existente. Sem tocar o banco: um health check que depende do Postgres
+  transformaria uma falha transitória de conexão em falso-negativo de "API fora do ar", quando a API em
+  si está de pé (Constituição V — YAGNI, sem infraestrutura de observabilidade nova). Reusar
+  `accounts/me/` para o sinal de sessão evita um segundo endpoint só para retornar 200/401.
+- **Alternatives considered**: Health check verificando conexão com o banco (rejeitado — mistura dois
+  sinais diferentes, API-viva vs. banco-vivo, que FR-059 não pede); endpoint dedicado de
+  "validar token" (rejeitado — `accounts/me/` já faz isso e já está testado, T017/T018).

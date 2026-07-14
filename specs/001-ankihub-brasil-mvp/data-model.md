@@ -39,6 +39,11 @@ administrador (FR-049).
 | `note_count` | int, denormalizado | atualizado ao criar/remover nota |
 | `subscriber_count` | int, denormalizado | atualizado ao (des)inscrever |
 
+**Importação inicial (FR-062, clarificado 2026-07-14)**: `Deck` + `NoteType` + `Note`s commitam em uma
+única transação atômica no `publish` — o deck nunca aparece parcialmente publicado no catálogo. Upload
+de mídia roda fora dessa transação em melhor esforço; falha isolada de mídia não desfaz a publicação
+(fica pendente até uma sincronização subsequente trazer o arquivo — ver `contracts/sync.md`).
+
 ### DeckModerator
 Junção usuário↔deck com papel de moderador (US-11).
 
@@ -93,7 +98,7 @@ forçar ressincronização completa em vez de delta parcial (FR-035).
 | `change_category` | enum (`conteudo_atualizado`, `ortografia_gramatica`, `erro_conteudo`, `nova_tag`, `tag_atualizada`, `outro`), nullable | obrigatório apenas quando `type=change` (FR-013) |
 | `justification` | text | obrigatória em todos os tipos |
 | `proposed_field_values` | JSON, nullable | usado em `change`/`new_note` |
-| `status` | enum (`pending`, `accepted`, `rejected`) | terminal ao sair de `pending` — sem reversão via UI (FR-027) |
+| `status` | enum (`pending`, `accepted`, `rejected`) | terminal ao sair de `pending` — sem reversão via UI (FR-027). Decisão (accept/reject) usa `select_for_update()` dentro da transação: a primeira decisão commitada vence, uma segunda tentativa concorrente relê o status já terminal e falha sem sobrescrever (FR-027, clarificado 2026-07-14) |
 | `rejection_reason` | text, nullable | |
 | `decided_by` | FK → User, nullable | moderador que decidiu |
 

@@ -22,6 +22,19 @@
 - Q: Que requisitos de acessibilidade se aplicam às telas do frontend, hoje ausentes do spec (fonte: `rascunho-frontend.md`)? → A: Todo formulário tem labels associados aos campos, contraste de texto/fundo em nível AA (WCAG), e todo componente interativo (editor rich text, abas de Community Suggestions, botões de curtir/aceitar/rejeitar) é operável via teclado.
 - Q: A renderização fiel de nota (FR-011) pode ser afetada pelo estilo visual do resto da aplicação (design system do frontend)? → A: Não — o preview de nota MUST permanecer visualmente isolado do CSS/tema do restante da aplicação, para que apenas o template/CSS original do Anki determine sua aparência.
 
+### Session 2026-07-14
+
+- Q: Qual nome aparece como menu top-level do add-on no menubar do Anki (e como marca visível do add-on)? → A: "Revizza" — todo o copy pt-BR do add-on usa essa marca; a convenção de tag `AnkiHubBR_Protect::` já implementada permanece inalterada.
+- Q: Quais itens compõem o menu Revizza no menubar? → A: Núcleo apenas: Entrar/Sair, Sincronizar agora, Decks inscritos, Criar deck Revizza (upload inicial), Testar conexão — só o que a plataforma atual já suporta.
+- Q: O diálogo "Decks inscritos" do add-on permite gerenciar ou só visualizar? → A: Gerenciar básico — listar decks, cancelar inscrição e alterar preferências de sync (gatilhos automático/encadeado e apagar vs marcar nota removida) direto no add-on, absorvendo o antigo item "Preferências" (mesmo domínio por-deck, sem conceito de preferência global no produto); inscrever-se em deck novo continua exclusivo da web.
+- Q: Como fica a configuração de URL da API depois de pré-configurada? → A: Escondida — URL de produção embutida como constante única no pacote, ausente da UI; override apenas pelo config.json avançado do Anki (dev/teste); o usuário só precisa logar.
+- Q: O que o botão "Testar conexão" verifica? → A: API + sessão — sempre testa o alcance da API por endpoint público leve (sem auth) e, se houver sessão, valida também o token; reporta dois sinais distintos ("API ok" e "Sessão ok/expirada").
+- Q: FR-052 não quantifica a taxa de submissão de sugestões (distinta dos 10s de FR-032 para sync). Qual limite? → A: 20 submissões por minuto por usuário — valor já implementado em produção; o spec apenas formaliza.
+- Q: Comportamento esperado quando uma dependência externa crítica (Supabase Auth/DB, e-mail, Storage) fica indisponível? → A: Erro genérico e legível em pt-BR reportado ao Sentry, sem retry automático nem modo degradado dedicado — escopo mínimo suficiente para o MVP/teste fechado.
+- Q: Se o job de exclusão de conta (FR-046) ou o e-mail de notificação de remoção (FR-050) falhar, o que acontece? → A: O job de exclusão é idempotente e reexecuta na próxima janela agendada até concluir; falha de e-mail nunca bloqueia a ação principal (dado deletado ou conteúdo removido não espera confirmação de envio); erros vão ao Sentry, sem retry imediato nem alerta ativo.
+- Q: A importação inicial de deck precisa ser transação única incluindo mídia, ou tolera mídia em melhor-esforço? → A: Deck/tipo de nota/notas committam em uma única transação atômica (nunca existe deck "meio publicado" no catálogo); upload de mídia roda fora da transação em melhor esforço — falha isolada de mídia não desfaz a publicação, só fica pendente até uma sincronização trazer o arquivo.
+- Q: Decisões de moderação concorrentes ou submissão duplicada da mesma correção — qual estado final é garantido? → A: A primeira decisão vence; a sugestão é travada dentro da transação de decisão e uma segunda tentativa concorrente falha sem sobrescrever o status terminal já gravado; submissão duplicada/vazia da mesma correção é rejeitada no servidor antes de virar sugestão nova.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Cadastro, login e consentimentos (Priority: P1)
@@ -79,7 +92,7 @@ Como estudante, quero que o deck que assinei na web seja recebido e mantido atua
 6. **Given** um deck com alterações pendentes, **When** a sincronização roda, **Then** apenas o delta desde a última sincronização é aplicado (comparado ao cache local por nota), na ordem: tipos de nota → notas → reorganização de subdecks.
 7. **Given** uma mudança estrutural grande demais para reconciliar via delta (ex.: número de templates do tipo de nota mudou), **When** a sincronização detecta esse caso, **Then** o add-on força uma ressincronização completa do deck em vez de aplicar o delta parcialmente.
 8. **Given** notas com imagens em campos, **When** a sincronização ocorre, **Then** as imagens são sincronizadas e um arquivo já existente e inalterado (mesmo hash) não é reenviado/rebaixado.
-9. **Given** uma nota removida oficialmente após aceite de sugestão de exclusão (User Story 7), **When** a mudança chega via sincronização, **Then** o comportamento local segue a preferência do assinante: apagar a nota de fato ou apenas marcá-la preservando o histórico de repetição espaçada.
+9. **Given** uma nota removida oficialmente após aceite de sugestão de exclusão (User Story 9), **When** a mudança chega via sincronização, **Then** o comportamento local segue a preferência do assinante: apagar a nota de fato ou apenas marcá-la preservando o histórico de repetição espaçada.
 10. **Given** uma sincronização interrompida no meio (ex.: queda de rede ou fechamento do Anki), **When** o add-on detecta a falha, **Then** a coleção é revertida para o backup criado antes da sincronização e uma nova tentativa completa é exigida — não há retomada parcial do delta interrompido.
 
 ---
@@ -116,7 +129,7 @@ Como estudante ou moderador, quero ver todas as sugestões de um deck em um só 
 2. **Given** a tela de sugestões, **When** o usuário busca por ID de nota ou autor, ou filtra por status/período/tipo de envio, **Then** a lista é restringida de acordo.
 3. **Given** uma sugestão listada, **When** o usuário a visualiza, **Then** vê autor, data, tipo de mudança, justificativa, diff (ou campos propostos) e a nota relacionada com contador de sugestões abertas.
 4. **Given** uma sugestão de terceiro, **When** um assinante autenticado curte ou descurte, **Then** o sinal fica visível a todos, inclusive ao moderador, antes da decisão.
-5. **Given** uma sugestão específica, **When** um usuário comenta nela, **Then** o comentário aparece na thread própria dessa sugestão, distinta da thread geral da nota (User Story 8).
+5. **Given** uma sugestão específica, **When** um usuário comenta nela, **Then** o comentário aparece na thread própria dessa sugestão, distinta da thread geral da nota (User Story 7).
 6. **Given** um moderador do deck, **When** ele abre a tela de Community Suggestions, **Then** vê adicionalmente os botões de aceitar/rejeitar em cada sugestão.
 7. **Given** uma sugestão pendente, **When** o moderador aceita, **Then** a mudança é aplicada na nota oficial (ou a nota é criada/removida, conforme o tipo), a sugestão é marcada como "aceita", e a mudança entra na fila de sincronização para todos os assinantes.
 8. **Given** uma sugestão pendente, **When** o moderador rejeita, **Then** ela é marcada como "rejeitada" com motivo opcional visível ao autor da sugestão.
@@ -253,6 +266,25 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 
 ---
 
+### User Story 14 - Menu Revizza no menubar do Anki (Priority: P2)
+
+Como estudante, quero acessar todas as funções do add-on por um menu "Revizza" próprio no menubar do Anki, já conectado ao servidor correto, para fazer login, sincronizar, gerenciar meus decks inscritos e publicar um deck sem configurar nada manualmente.
+
+**Why this priority**: Melhora decisivamente a usabilidade das jornadas já entregues (US3 sync, publicação inicial), espelhando a UX consagrada do add-on AnkiHub original (Constituição, Princípio I); mas o ciclo central já funciona pelos itens em Ferramentas, então não bloqueia o MVP.
+
+**Independent Test**: Pode ser testado isoladamente abrindo o Anki com o add-on instalado e verificando que o menu "Revizza" aparece no menubar (fora de Ferramentas) com os cinco itens do núcleo, que o login exige apenas e-mail/senha (sem URL), que "Testar conexão" reporta os dois sinais, e que "Decks inscritos" lista, permite cancelar inscrição e ajustar as preferências de sincronização do deck.
+
+**Acceptance Scenarios**:
+
+1. **Given** o Anki aberto com o add-on instalado, **When** o usuário olha o menubar, **Then** existe um menu top-level "Revizza" (não dentro de Ferramentas) com os itens: Entrar/Sair, Sincronizar agora, Decks inscritos, Criar deck Revizza, Testar conexão — sem um item "Preferências" separado, pois as preferências de sincronização por deck vivem dentro de "Decks inscritos".
+2. **Given** um usuário não logado, **When** ele abre o menu Revizza, **Then** as ações que exigem autenticação (Sincronizar, Decks inscritos, Criar deck) aparecem desabilitadas, e Entrar e Testar conexão permanecem habilitadas.
+3. **Given** o diálogo de login, **When** o usuário o abre, **Then** apenas e-mail e senha são solicitados — nenhum campo de URL da API, URL do Supabase ou chave pública é exibido ou exigido (as credenciais de conexão de produção vêm embutidas no pacote).
+4. **Given** o item "Testar conexão", **When** acionado, **Then** o add-on reporta dois sinais distintos: alcance da API (endpoint público leve, sem auth) e validade da sessão (quando houver login) — cada um com resultado próprio.
+5. **Given** o diálogo "Decks inscritos", **When** o usuário logado o abre, **Then** vê a lista dos decks que assina e pode, por deck, cancelar a inscrição, ajustar os gatilhos de sincronização (manual/automático/encadeado) e alterar a preferência de remoção (apagar vs marcar), sem sair do Anki; inscrever-se em deck novo continua sendo feito pela web.
+6. **Given** o item "Criar deck Revizza", **When** acionado por um usuário logado, **Then** dispara o fluxo existente de importação inicial única (upload de deck inexistente), respeitando a resposta `409` quando o deck já foi publicado.
+
+---
+
 ### Edge Cases
 
 - O que acontece quando duas sincronizações do mesmo usuário são disparadas quase simultaneamente (manual + automática)? A segunda deve ser bloqueada pelo rate limit até a primeira concluir (User Story 3).
@@ -265,6 +297,10 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - O que acontece quando um usuário denunciado e suspenso (soft-ban) tenta comentar, sugerir ou logar? Todas essas ações devem ficar bloqueadas até a suspensão ser revertida (User Story 13).
 - O que acontece quando uma sincronização é interrompida no meio (queda de rede, Anki fechado)? A coleção é revertida para o backup pré-sincronização e uma nova tentativa completa é exigida — não há retomada parcial (User Story 3).
 - O que acontece quando o usuário roda o add-on em uma versão do Anki Desktop diferente da LTS mais recente? O MVP não garante compatibilidade fora da versão LTS mais recente (User Story 3).
+- O que acontece quando a API está fora do ar e o usuário aciona "Testar conexão" ou uma sincronização? "Testar conexão" reporta falha de alcance da API com mensagem clara; a sincronização falha com erro legível, sem travar o Anki (User Story 14).
+- O que acontece quando a sessão do usuário expira no add-on? "Testar conexão" reporta "API ok" e "Sessão expirada" como sinais distintos, orientando o usuário ao item Entrar (User Story 14).
+- O que acontece quando uma dependência externa crítica (Supabase Auth/DB, e-mail, Storage) fica indisponível? O sistema retorna erro genérico e legível em pt-BR e reporta o incidente ao Sentry, sem retry automático nem modo degradado dedicado no MVP.
+- O que acontece quando dois moderadores decidem (aceitar/rejeitar) a mesma sugestão quase simultaneamente? A primeira decisão prevalece; a segunda tentativa concorrente falha sem sobrescrever o status terminal já gravado (User Story 5).
 
 ## Requirements *(mandatory)*
 
@@ -296,7 +332,7 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - **FR-017**: O sistema MUST permitir sugestão em lote — mesmo tipo de mudança e justificativa aplicados a várias notas selecionadas em uma única submissão.
 - **FR-018**: O sistema MUST permitir propor uma nota inteiramente nova em um deck assinado, apresentando todos os campos do tipo de nota do deck com o mesmo editor rich text, sinalizando campos deixados vazios, e exigindo justificativa e tags.
 - **FR-019**: O sistema MUST permitir sugerir a exclusão de uma nota existente mediante justificativa obrigatória, tratando-a como categoria própria de sugestão.
-- **FR-020**: O sistema MUST registrar toda sugestão (mudança, nota nova ou exclusão) com status inicial "pendente", vinculada ao autor, à(s) nota(s) e ao(s) campo(s) relevantes.
+- **FR-020**: O sistema MUST registrar toda sugestão (mudança, nota nova ou exclusão) com status inicial "pendente", vinculada ao autor, à(s) nota(s) e ao(s) campo(s) relevantes. Uma submissão duplicada ou vazia da mesma correção MUST ser rejeitada pelo servidor antes de virar uma nova sugestão.
 
 **Community Suggestions e moderação**
 - **FR-021**: O sistema MUST exibir, a qualquer assinante autenticado de um deck (não somente moderadores), uma tela com três abas — mudanças, notas novas e exclusões — listando todas as sugestões do deck.
@@ -305,7 +341,7 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - **FR-024**: O sistema MUST fornecer, para cada sugestão, uma thread de discussão própria, distinta da thread geral de comentários da nota.
 - **FR-025**: O sistema MUST exibir botões de aceitar/rejeitar apenas a moderadores do deck, na própria tela de Community Suggestions.
 - **FR-026**: O sistema MUST, ao aceitar uma sugestão, aplicar a mudança na nota oficial (ou criar/remover a nota, conforme o tipo), marcar a sugestão como "aceita" e enfileirar a mudança para sincronização de todos os assinantes.
-- **FR-027**: O sistema MUST, ao rejeitar uma sugestão, marcá-la como "rejeitada" com motivo opcional visível ao autor, sem oferecer reversão da decisão pela interface no MVP.
+- **FR-027**: O sistema MUST, ao rejeitar uma sugestão, marcá-la como "rejeitada" com motivo opcional visível ao autor, sem oferecer reversão da decisão pela interface no MVP. Decisões concorrentes (aceitar/rejeitar) sobre a mesma sugestão MUST resultar na primeira decisão prevalecendo — a sugestão é travada durante a decisão, e uma segunda tentativa concorrente MUST falhar sem sobrescrever o status terminal já gravado.
 
 **Moderadores de deck**
 - **FR-028**: O sistema MUST permitir que um moderador convide outro usuário (por e-mail/username) para se tornar moderador do mesmo deck, exigindo aceite do convidado antes de conceder o papel.
@@ -322,6 +358,7 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 - **FR-037**: O sistema MUST propagar a remoção de uma nota (por sugestão de exclusão aceita) na sincronização seguinte, respeitando a preferência do assinante entre apagar a nota de fato ou apenas marcá-la preservando o histórico de repetição espaçada local.
 - **FR-038**: O sistema MUST oferecer suporte apenas à versão LTS (Long Term Support) mais recente do Anki Desktop no MVP, sem garantir compatibilidade com versões não-LTS.
 - **FR-039**: O sistema MUST, ao detectar falha ou interrupção durante uma sincronização (ex.: queda de rede, fechamento do Anki), reverter a coleção local para o backup criado antes da sincronização (FR-033) e exigir uma nova tentativa completa em vez de retomar ou deixar o delta parcialmente aplicado.
+- **FR-062**: A importação inicial de um deck (criador autenticado, deck ainda inexistente — Constitution II) MUST persistir deck, tipo(s) de nota e notas em uma única transação atômica, de forma que o deck nunca apareça parcialmente publicado no catálogo; o upload da mídia associada MUST ocorrer em melhor esforço fora dessa transação — uma falha isolada de mídia não desfaz a publicação, permanecendo pendente até uma sincronização subsequente trazer o arquivo.
 
 **Proteção de dados pessoais na sincronização**
 - **FR-040**: O sistema MUST permitir que um assinante configure, por deck, uma lista de campos e de tags como "protegidos" (por correspondência de texto), aplicável por padrão a todas as notas do deck.
@@ -332,19 +369,26 @@ Como estudante, quero denunciar um comentário ou mensagem de discussão abusiva
 
 **Conta, privacidade e moderação de conteúdo**
 - **FR-045**: O sistema MUST permitir que o usuário revise e altere, a qualquer momento pela tela "Minha conta", os consentimentos dados no cadastro (e-mails de novidades e uso de dados em pesquisa), com efeito imediato.
-- **FR-046**: O sistema MUST agendar a exclusão definitiva da conta para 7 dias corridos após a solicitação, permitindo desistência nesse período; decorrido o prazo, dados pessoais são apagados e assinaturas/sugestões do usuário são anonimizadas.
+- **FR-046**: O sistema MUST agendar a exclusão definitiva da conta para 7 dias corridos após a solicitação, permitindo desistência nesse período; decorrido o prazo, dados pessoais são apagados e assinaturas/sugestões do usuário são anonimizadas. O job de exclusão MUST ser idempotente, reexecutando na próxima janela agendada em caso de falha até concluir.
 - **FR-047**: O sistema MUST permitir a exportação, sob solicitação, dos próprios dados do usuário (nome, e-mail, sugestões, comentários) em formato legível (JSON).
 - **FR-048**: O sistema MUST permitir denunciar qualquer comentário ou mensagem de discussão de sugestão, com motivo opcional em texto livre, registrando a denúncia como "pendente" vinculada ao conteúdo, ao autor da denúncia e ao autor do conteúdo.
 - **FR-049**: O sistema MUST permitir que um administrador da plataforma revise denúncias pendentes, remova o conteúdo denunciado e, se necessário, suspenda a conta do autor de forma reversível (soft-ban: sem login, comentário ou sugestão enquanto suspensa).
-- **FR-050**: O sistema MUST notificar por e-mail o autor de um conteúdo removido por denúncia, informando o motivo.
+- **FR-050**: O sistema MUST notificar por e-mail o autor de um conteúdo removido por denúncia, informando o motivo; falha no envio do e-mail MUST NOT bloquear ou reverter a remoção do conteúdo.
 - **FR-051**: O sistema MUST vincular toda sugestão, comentário e denúncia a um autor autenticado — não há submissão anônima no MVP.
-- **FR-052**: O sistema MUST limitar a taxa de submissão nos endpoints de sincronização e de envio de sugestões, para evitar abuso ou sobrecarga.
+- **FR-052**: O sistema MUST limitar a taxa de submissão nos endpoints de sincronização (10s — FR-032) e de envio de sugestões (20 submissões por minuto por usuário), para evitar abuso ou sobrecarga.
 
 **Não-funcionais / transversais**
 - **FR-053**: Toda tela do MVP MUST ser funcional em viewport de 360px de largura sem exigir rolagem horizontal (mobile-first).
 - **FR-054**: Transições de página e renderização de preview de nota MUST responder em até 500ms sob carga típica (deck de até 10 mil notas).
 - **FR-055**: Toda tela do MVP MUST atender requisitos básicos de acessibilidade: labels associados a todo campo de formulário, contraste de texto/fundo em nível AA (WCAG), e operação via teclado para todo componente interativo (editor rich text, abas, botões de curtir/descurtir/aceitar/rejeitar).
 - **FR-056**: Toda interface do MVP (textos, rótulos, mensagens de erro, e-mails transacionais) MUST estar em português do Brasil (pt-BR) — não há suporte a outros idiomas no MVP.
+
+**Add-on — interface e conectividade**
+- **FR-057**: O add-on MUST expor um menu top-level "Revizza" no menubar do Anki (não dentro de Ferramentas/Tools), contendo exatamente os itens do núcleo: Entrar/Sair, Sincronizar agora, Decks inscritos, Criar deck Revizza e Testar conexão; itens que exigem autenticação ficam desabilitados enquanto não houver sessão.
+- **FR-058**: O add-on MUST vir pré-configurado com as credenciais de conexão de produção (URL da API, URL do Supabase e chave pública do Supabase) embutidas como constantes do pacote, sem exibir nenhum desses campos na interface — o usuário só informa e-mail e senha; override é possível apenas pelo config.json avançado do Anki (uso de desenvolvimento/teste).
+- **FR-059**: O add-on MUST oferecer a ação "Testar conexão", que verifica o alcance da API por um endpoint público leve (sem autenticação) e, quando houver sessão, valida também o token — reportando dois sinais distintos ("API ok" e "Sessão ok/expirada") com mensagens legíveis.
+- **FR-060**: O add-on MUST fornecer um diálogo "Decks inscritos" — único ponto de gestão por-deck do add-on, absorvendo as preferências de gatilho de sincronização (manual/automático/encadeado — FR-031) — que lista os decks assinados do usuário e permite cancelar a inscrição e alterar a preferência de remoção de nota (apagar vs marcar — FR-037) diretamente no Anki; a inscrição em novos decks permanece exclusiva da plataforma web (FR-009).
+- **FR-061**: Todo o copy visível do add-on (menu, diálogos, mensagens) MUST usar a marca "Revizza"; a convenção de tag de proteção `AnkiHubBR_Protect::<Campo>` (FR-041) permanece inalterada por compatibilidade com dados já existentes.
 
 ### Key Entities *(include if feature involves data)*
 

@@ -13,6 +13,9 @@ Anki — nunca diretamente pelo frontend web.
 **Regras aplicadas neste conjunto de rotas**:
 - Publicação: o `POST .../publish/` é create-only. Depois da importação inicial, mudanças oficiais
   entram pela web e pelo fluxo de sugestão → moderação; o add-on nunca sobrescreve o deck oficial.
+  `Deck`/`NoteType`/`Note`s commitam em uma única transação atômica — o deck nunca aparece
+  parcialmente publicado no catálogo; upload de mídia roda fora dessa transação em melhor esforço,
+  e uma falha isolada de mídia não desfaz a publicação (FR-062, clarificado 2026-07-14).
 - Rate limit: no máximo uma requisição de sincronização (`delta`/`full`) por usuário a cada 10
   segundos; excesso responde `429` (FR-032, FR-052).
 - Compatibilidade: o add-on só é suportado rodando na versão LTS mais recente do Anki Desktop —

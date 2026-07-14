@@ -11,7 +11,7 @@
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Pode rodar em paralelo (arquivos diferentes, sem dependência de tarefa incompleta)
-- **[Story]**: A qual user story do spec.md a tarefa pertence (US1..US13)
+- **[Story]**: A qual user story do spec.md a tarefa pertence (US1..US14)
 - Caminhos de arquivo exatos em cada descrição, seguindo a estrutura de `plan.md`
 
 ---
@@ -316,6 +316,7 @@
 - **US1, US2, US3, US4, US5 (P1, Phases 3-7)**: dependem só de Foundational; **US3** é o alvo mais crítico do MVP (entrega a proposta de valor central) e **US5** fecha o ciclo iniciado por **US4** — ambas ainda são independentemente testáveis
 - **US6, US7, US8, US9, US11 (P2, Phases 8-12)**: dependem só de Foundational (podem rodar em paralelo entre si e com P1, se houver capacidade)
 - **US10, US12, US13 (P3, Phases 13-15)**: dependem só de Foundational
+- **US14 (P2, Phase 23)**: depende só de Foundational + endpoints de assinatura já existentes de US2 (`subscriptions/me/`); não bloqueia nem é bloqueada pelas demais — paralelizável com US6/US7/US8/US9/US11
 - **Polish (Phase 16)**: depende de todas as user stories desejadas estarem completas
 
 ### Notas de acoplamento (não bloqueiam independência, mas compartilham modelos)
@@ -328,7 +329,7 @@
 
 - Todas as tarefas [P] de uma mesma fase podem rodar em paralelo (arquivos distintos)
 - Após Foundational, US1-US5 (P1) podem ser distribuídas entre desenvolvedores diferentes em paralelo
-- Após Foundational, US6/US7/US8/US9/US11 (P2) e US10/US12/US13 (P3) também podem rodar em paralelo entre si
+- Após Foundational, US6/US7/US8/US9/US11/US14 (P2) e US10/US12/US13 (P3) também podem rodar em paralelo entre si
 
 ---
 
@@ -471,3 +472,40 @@ Com múltiplos desenvolvedores, após Foundational:
 **Purpose**: Lacuna de cobertura detectada por /speckit-analyze em 2026-07-14 — SC-006 sem tarefa de validação; sem duplicar T101–T147
 
 - [ ] T148 Add a timed cadastro→primeiro-login validation (Playwright walkthrough em `frontend/tests/e2e/` ou passo cronometrado documentado em `quickstart.md`) provando o orçamento de menos de 2 minutos sem assistência externa per SC-006 (missing)
+
+---
+
+## Phase 23: User Story 14 - Menu Revizza no menubar do Anki (Priority: P2)
+
+**Goal**: O add-on ganha um menu top-level "Revizza" no menubar (fora de Ferramentas), com credenciais
+de conexão embutidas (login só pede e-mail/senha), "Testar conexão" com dois sinais distintos, e um
+diálogo "Decks inscritos" que lista/cancela assinaturas e concentra as preferências por deck — cobre
+FR-057 a FR-062 e research.md #12/#15/#16 (spec clarificado e planejado em 2026-07-14).
+
+**Independent Test**: Abrir o Anki com o add-on instalado e confirmar o menu "Revizza" no menubar (não
+em Ferramentas) com os cinco itens do núcleo (sem "Preferências" separado — absorvido por "Decks
+inscritos"); sem login, apenas Entrar e Testar conexão habilitados; login pede só e-mail/senha; Testar
+conexão reporta os dois sinais (API/Sessão); Decks inscritos lista, permite cancelar inscrição e
+ajustar gatilhos de sync/preferência de remoção por deck.
+
+**Achado ao planejar**: FR-020 (rejeitar sugestão duplicada/vazia), FR-027 (lock de decisão concorrente),
+FR-046 (job de exclusão idempotente por natureza do filtro), FR-050 (falha de e-mail não bloqueia
+remoção) e FR-062 (publish atômico, mídia fora da transação) **já estão implementados** — T134, T135,
+T145 e `apps/sync/views.py::transaction.atomic()` cobrem essas cláusulas clarificadas; nenhuma tarefa
+nova para elas aqui. O único endpoint novo é `GET /api/v1/health/`; todo o resto desta fase é add-on.
+
+- [ ] T149 [P] [US14] Contract test `GET /api/v1/health/` (sem autenticação, `200`, sem depender do banco) in `backend/tests/contract/test_health.py`
+- [ ] T150 [P] [US14] Implement `GET /api/v1/health/` (`AllowAny`, sem tocar o banco) in `backend/config/views.py`, `backend/config/urls.py` per FR-059 / research.md #16
+- [ ] T151 [P] [US14] Embed `api_base_url`/`supabase_url`/`supabase_anon_key` de produção (as três credenciais de conexão) como constantes do pacote (config.json continua como override avançado, só usado se explicitamente preenchido) in `addon/ankihub_br/main/constants.py` per FR-058 / research.md #12
+- [ ] T152 [P] [US14] Add `sign_out()` limpando `token`/`refresh_token`/`token_expires_at` do config in `addon/ankihub_br/auth.py` per FR-057
+- [ ] T153 [P] [US14] Add client helpers `test_connection()` (GET `/health/` sempre; GET `/accounts/me/` quando houver token, retornando os dois sinais distintos) e `unsubscribe(deck_id)` (DELETE `.../subscriptions/me/`) in `addon/ankihub_br/ankihub_br_client/client.py` per FR-059, FR-060
+- [ ] T154 [US14] Reconstruir `gui/__init__.py` em um `QMenu("&Revizza")` top-level via `aqt.mw.form.menubar.addMenu`, com item placeholder desabilitado e conteúdo populado no sinal `aboutToShow` (substituindo os quatro `menuTools.addAction` atuais), com exatamente os cinco itens Entrar/Sair, Sincronizar agora, Decks inscritos, Criar deck Revizza, Testar conexão — sem item "Preferências" separado (ver T158) in `addon/ankihub_br/gui/__init__.py` per FR-057 / research.md #15
+- [ ] T155 [US14] Extrair a lógica de itens habilitados/desabilitados por estado de sessão em uma função pura (sem import de `aqt` no nível de módulo, mesma convenção já usada no arquivo) e cobri-la com um teste headless (sem sessão vs. com sessão) in `addon/ankihub_br/gui/__init__.py`, `addon/tests/unit/test_menu.py` per FR-057/AC2
+- [ ] T156 [US14] Simplificar `show_login()` para pedir apenas e-mail e senha, removendo os três campos de URL e usando as constantes embutidas de T151 (com override do config.json avançado quando preenchido) in `addon/ankihub_br/gui/__init__.py` per FR-058/AC3
+- [ ] T157 [US14] Adicionar a ação "Testar conexão" exibindo os dois sinais distintos de T153 ("API ok"/"API indisponível" e "Sessão ok"/"Sessão expirada") in `addon/ankihub_br/gui/__init__.py` per FR-059/AC4
+- [ ] T158 [US14] Renomear `show_preferences()` para o diálogo único "Decks inscritos" — não cria um segundo diálogo nem mantém "Preferências" como item de menu separado (ver T154): mantém os controles existentes de gatilho de sync e preferência de remoção, e adiciona um botão "Cancelar inscrição" por deck usando `unsubscribe()` de T153 (sem ação de inscrever-se em deck novo) in `addon/ankihub_br/gui/__init__.py` per FR-060/AC5
+- [ ] T159 [P] [US14] Renomear o `name` do manifest e todo o copy visível do add-on (menu, diálogos, tooltips) de "AnkiHub Brasil" para "Revizza", mantendo intocada a convenção de tag `AnkiHubBR_Protect::` in `addon/ankihub_br/manifest.json` per FR-061
+- [ ] T160 [US14] Rodar o Cenário de validação 4 de `quickstart.md` ponta-a-ponta com o `.ankiaddon` gerado por `addon/build.py`, confirmando os cinco itens do menu (sem "Preferências" separado), os dois sinais de Testar conexão, o login sem credenciais de servidor e o cancelamento de inscrição per FR-057–FR-060
+
+**Checkpoint**: US14 funciona isoladamente sobre a Fundação (Phase 2) — não depende de nenhuma outra
+user story além dos endpoints de assinatura já existentes (US2).
