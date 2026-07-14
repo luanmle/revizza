@@ -2,6 +2,35 @@
 Sync Impact Report
 ==================
 Current amendment:
+  - Version change: 1.2.1 to 1.3.0 (minor — new Principle VIII added).
+  - Added Principle VIII. Sync Fidelity & State Separation: AnkiHub-grade
+    sync fidelity as a collaborative content repository; strict domain
+    separation between Note Content (schemas/note-type/fields/media/tags)
+    and Card State (scheduling metadata: ease, intervals, due dates, local
+    review history); sync/pull from the platform MUST touch only Note
+    Content, never overwrite/reset/corrupt local scheduling or review
+    progress; every `/speckit.plan` touching note/deck data models, sync
+    endpoints, or note/deck business rules MUST address this separation
+    explicitly and include automated-test tasks proving payload updates
+    don't affect local study metadata.
+  - Modified sections: Governance → Compliance review list now includes
+    Principle VIII alongside II/III/IV as a hard gate for PRs touching
+    sync, note/deck data models, or scheduling-adjacent code.
+  - ✅ `.specify/templates/plan-template.md`: no change needed (the
+    Constitution Check gate reads this file dynamically).
+  - ✅ `.specify/templates/spec-template.md`: no change needed.
+  - ✅ `.specify/templates/tasks-template.md`: no change needed (task
+    categorization already supports adding test tasks per plan; the new
+    principle's test requirement is enforced via the Constitution Check
+    gate at plan time, not a template structure change).
+  - ✅ `CLAUDE.md`: version and principle count updated.
+  - Note: no backend model currently stores card-scheduling state (`Note`
+    in `backend/apps/notes/models.py` has no ease/interval/due fields —
+    scheduling lives exclusively in the local Anki SQLite `cards`/`revlog`
+    tables); this amendment codifies that existing invariant explicitly
+    rather than changing current behavior.
+
+Previous amendment (historical):
   - Version change: 1.2.0 to 1.2.1 (patch — typo fix in Principle I: the
     protection-tag convention now reads `AnkiHubBR_Protect::<Campo>`,
     matching Principle II, spec.md FR-041, and the add-on code; no
@@ -191,6 +220,44 @@ without a ratified generation→audit pipeline and a persistent design
 system, each screen invents its own look and the product accretes
 inconsistent, inaccessible UI that later needs wholesale retrofit.
 
+### VIII. Sync Fidelity & State Separation (NON-NEGOTIABLE)
+
+- **AnkiHub-standard sync fidelity**: the system MUST maintain maximum
+  compatibility and fidelity with AnkiHub's own sync behavior, so the
+  update flow works the way users of a collaborative content repository
+  already expect it to (Principle I extended to the sync surface
+  specifically) — not a reinvented protocol that happens to move similar
+  data.
+- **Strict domain separation**: the database architecture and application
+  entities MUST rigidly separate **Note Content** (note-type schemas,
+  field text, media, tags) from **Card State** (scheduling metadata:
+  ease/difficulty, intervals, due dates, and local review history). These
+  are different lifecycles owned by different parties — content is
+  collaboratively authored and web-authoritative; card state is a private,
+  per-user local artifact of the Anki scheduler — and MUST NOT share a
+  table, a serializer, or a sync payload that treats them as one concern.
+- **Local data protection (scheduling immutability)**: updates received
+  from the platform (sync/pull operations) MUST modify Note Content
+  exclusively. A user's local scheduling history and review progress MUST
+  NEVER be overwritten, reset, or corrupted by a note-type or deck sync —
+  including the full-resync fallback path (Principle II) triggered by a
+  structural change, which rebuilds note/note-type data but MUST leave
+  every local card's scheduling state untouched.
+- **Planning governance**: every `/speckit.plan` that creates or modifies
+  data models, sync endpoints, or business rules for notes/decks MUST
+  explicitly address this separation, and MUST include automated-test
+  tasks that specifically assert a payload update does not alter the
+  user's local study metadata.
+
+**Rationale**: Principle II already forbids upstream overwrites of
+protected fields/tags; this principle closes a related but distinct gap —
+even for content a sync operation *is* allowed to update, the scheduling
+state riding alongside that content in the same local Anki collection must
+never be touched. Conflating "update this note's text" with "touch this
+card's review history" is exactly the class of bug that would destroy a
+user's spaced-repetition progress silently, which is the single most
+trust-destroying failure mode this product can have.
+
 ## Technology Constraints
 
 The following stack decisions are ratified in the PRD (§4.3) and MUST be
@@ -262,5 +329,8 @@ sync, suggestion moderation, personal data, or the rich-text editor should
 treat the corresponding principle (II, III, IV) as a hard gate, not a
 suggestion. Reviewers of frontend PRs should additionally hold the line on
 Principles VI and VII (docs-verified APIs, minimal code, design pipeline).
+Reviewers of any PR touching note/deck data models or sync endpoints
+should additionally hold the line on Principle VIII (Note Content/Card
+State separation, scheduling immutability) as a hard gate.
 
-**Version**: 1.2.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-14
+**Version**: 1.3.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-14

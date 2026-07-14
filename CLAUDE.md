@@ -9,7 +9,7 @@ Implementation is underway (US1/US2 of the MVP spec are built; US3 partially). T
 - `PRD-AnkiHub-Brasil.md` — the product requirements document (in Portuguese) and the single source of truth for scope, user stories, and technical decisions.
 - `specs/001-ankihub-brasil-mvp/` — the active spec-kit feature (spec, plan, tasks, contracts, data model).
 - `.specify/` — a [spec-kit](https://github.com/github/spec-kit) (speckit) scaffold for spec-driven development (specify → plan → tasks → implement).
-- `.specify/memory/constitution.md` — **ratified** (v1.2.1): seven principles including create-only initial deck import followed by unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, and the ui-ux-pro-max→impeccable design pipeline. Check it before starting any work.
+- `.specify/memory/constitution.md` — **ratified** (v1.3.0): eight principles including create-only initial deck import followed by unidirectional sync, LGPD by design, YAGNI, context7+ponytail code discipline, the ui-ux-pro-max→impeccable design pipeline, and strict Note Content/Card State separation with scheduling immutability during sync. Check it before starting any work.
 - `backend/` (Django + DRF, pytest), `frontend/` (Next.js 16 + Tailwind 4 + shadcn/ui, Vitest/Playwright), `addon/` (Anki add-on, pytest) — see each subtree and `frontend/AGENTS.md` for local rules.
 
 ## Working with the spec-kit workflow
