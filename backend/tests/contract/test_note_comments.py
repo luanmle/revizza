@@ -19,9 +19,9 @@ def _thread_url(note):
     return f"/api/v1/notes/{note.id}/comments/"
 
 
-def test_author_can_create_list_edit_and_delete_note_comment(
-    auth_client, user, note
-):
+def test_author_can_create_list_edit_and_delete_note_comment(auth_client, user, note):
+    user.name = "Ana Souza"
+    user.save(update_fields=["name"])
     created = auth_client.post(
         _thread_url(note), {"body": "Comentário inicial."}, format="json"
     )
@@ -29,6 +29,7 @@ def test_author_can_create_list_edit_and_delete_note_comment(
     assert created.status_code == 201
     comment_id = created.json()["id"]
     assert created.json()["author"] == str(user.id)
+    assert created.json()["author_name"] == "Ana Souza"
 
     listed = auth_client.get(_thread_url(note))
     assert listed.status_code == 200
@@ -51,9 +52,7 @@ def test_author_can_create_list_edit_and_delete_note_comment(
 def test_note_thread_never_lists_suggestion_comments(
     auth_client, user, note, make_suggestion
 ):
-    note_comment = Comment.objects.create(
-        author=user, note=note, body="Thread geral."
-    )
+    note_comment = Comment.objects.create(author=user, note=note, body="Thread geral.")
     suggestion = make_suggestion(notes=[note])
     Comment.objects.create(
         author=user, suggestion=suggestion, body="Thread da sugestão."
@@ -62,14 +61,10 @@ def test_note_thread_never_lists_suggestion_comments(
     response = auth_client.get(_thread_url(note))
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["results"]] == [
-        str(note_comment.id)
-    ]
+    assert [item["id"] for item in response.json()["results"]] == [str(note_comment.id)]
 
 
-def test_non_author_cannot_edit_or_delete_comment(
-    note, user, make_user
-):
+def test_non_author_cannot_edit_or_delete_comment(note, user, make_user):
     comment = Comment.objects.create(author=user, note=note, body="Do autor.")
     outsider = APIClient()
     outsider.force_authenticate(user=make_user("outra@example.com"))

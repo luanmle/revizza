@@ -16,6 +16,7 @@ Estende o usuário gerenciado pelo Supabase Auth com os dados de perfil específ
 |---|---|---|
 | `auth_id` | UUID | referência ao usuário no Supabase Auth; chave de junção, não gerada aqui |
 | `email` | string | espelhado do Auth para consultas locais |
+| `name` | string, opcional | nome exibido em sugestões e comentários; nunca substituído pelo e-mail |
 | `target_career` | enum (`fiscal`/`policial`/`juridica`/`outra`/null) | opcional, onboarding (US-01) |
 | `target_board` | string, nullable | banca/edital de interesse (US-01) |
 | `consent_marketing_emails` | bool, default `false` | nunca pré-marcado (FR-005) |

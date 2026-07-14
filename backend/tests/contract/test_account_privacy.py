@@ -71,6 +71,8 @@ def test_grace_job_deletes_user_but_anonymizes_community_content(
 def test_export_contains_only_requesting_users_personal_content(
     auth_client, user, make_note, make_suggestion, make_user
 ):
+    user.name = "Ana Souza"
+    user.save(update_fields=["name"])
     note = make_note()
     suggestion = make_suggestion(notes=[note], author=user)
     own_comment = Comment.objects.create(author=user, note=note, body="Meu comentário")
@@ -82,6 +84,7 @@ def test_export_contains_only_requesting_users_personal_content(
     assert response.status_code == 200
     body = response.json()
     assert body["profile"]["email"] == user.email
+    assert body["profile"]["name"] == "Ana Souza"
     assert [item["id"] for item in body["suggestions"]] == [str(suggestion.id)]
     assert [item["id"] for item in body["comments"]] == [str(own_comment.id)]
     assert body["comments"][0]["body"] == "Meu comentário"

@@ -17,7 +17,7 @@ def test_blocks_javascript_urls():
 def test_keeps_anki_compatible_formatting():
     html = (
         '<span style="font-size:18px">A</span>'
-        '<div style="text-align:center">B</div><ul><li>i</li></ul><u>u</u>'
+        '<p style="text-align:center">B</p><ul><li>i</li></ul><u>u</u>'
     )
     assert sanitize_html(html) == html
 

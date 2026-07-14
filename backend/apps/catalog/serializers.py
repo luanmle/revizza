@@ -18,22 +18,27 @@ class DeckSerializer(serializers.ModelSerializer):
 
 
 class DeckDetailSerializer(DeckSerializer):
-    moderators = serializers.SerializerMethodField()
+    moderator_count = serializers.SerializerMethodField()
+    is_moderator = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
     note_type = serializers.SerializerMethodField()
 
     class Meta(DeckSerializer.Meta):
         fields = DeckSerializer.Meta.fields + [
-            "moderators",
+            "moderator_count",
+            "is_moderator",
             "is_subscribed",
             "note_type",
         ]
 
-    def get_moderators(self, deck):
-        return [
-            {"id": str(m.user_id), "email": m.user.email}
-            for m in deck.moderators.filter(status="active").select_related("user")
-        ]
+    def get_moderator_count(self, deck):
+        return deck.moderators.filter(status=DeckModerator.Status.ACTIVE).count()
+
+    def get_is_moderator(self, deck):
+        return deck.moderators.filter(
+            status=DeckModerator.Status.ACTIVE,
+            user=self.context["request"].user,
+        ).exists()
 
     def get_is_subscribed(self, deck):
         user = self.context["request"].user

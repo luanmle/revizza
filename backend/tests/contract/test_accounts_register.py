@@ -43,6 +43,7 @@ def test_register_accepts_optional_career_board_and_consents(api_client, mock_si
     response = api_client.post(
         URL,
         {
+            "name": "Ana Souza",
             "email": "novo@example.com",
             "password": "s3nha-forte",
             "target_career": "fiscal",
@@ -55,6 +56,7 @@ def test_register_accepts_optional_career_board_and_consents(api_client, mock_si
 
     assert response.status_code == 201
     user = User.objects.get(email="novo@example.com")
+    assert user.name == "Ana Souza"
     assert user.target_career == "fiscal"
     assert user.target_board == "CEBRASPE"
     assert user.consent_marketing_emails is True

@@ -47,3 +47,38 @@ test("mostra estado vazio e publica comentário na thread da nota", async () => 
     }),
   );
 });
+
+test("exibe o nome do autor em vez do prefixo do UUID", async () => {
+  api.get.mockImplementation((path: string) =>
+    Promise.resolve(
+      path === "/accounts/me/"
+        ? { id: "user-1" }
+        : {
+            next: null,
+            previous: null,
+            results: [
+              {
+                id: "comment-1",
+                author: "user-2",
+                author_name: "Ana Souza",
+                body: "Comentário útil.",
+                created_at: "2026-07-13T12:00:00Z",
+                edited_at: null,
+              },
+            ],
+          },
+    ),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  render(
+    <QueryClientProvider client={client}>
+      <CommentThread noteId="note-1" />
+    </QueryClientProvider>,
+  );
+
+  expect(await screen.findByText("Ana Souza")).toBeDefined();
+  expect(screen.queryByText(/Usuário user-2/)).toBeNull();
+});

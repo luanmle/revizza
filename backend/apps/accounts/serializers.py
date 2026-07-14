@@ -4,6 +4,7 @@ from .models import User
 
 PROFILE_FIELDS = [
     "id",
+    "name",
     "email",
     "target_career",
     "target_board",
@@ -22,6 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
     target_career = serializers.ChoiceField(
@@ -39,3 +41,9 @@ class ConsentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["consent_marketing_emails", "consent_research_data"]
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["name"]

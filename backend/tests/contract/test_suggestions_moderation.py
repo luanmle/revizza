@@ -70,8 +70,7 @@ def test_vote_is_upsert_per_user(auth_client, user, suggestion):
     assert response.status_code in (200, 201)
     assert SuggestionVote.objects.filter(suggestion=suggestion).count() == 1
     assert (
-        SuggestionVote.objects.get(suggestion=suggestion, user=user).value
-        == "dislike"
+        SuggestionVote.objects.get(suggestion=suggestion, user=user).value == "dislike"
     )
 
 
@@ -96,9 +95,7 @@ def test_vote_requires_subscription(suggestion, make_user):
     outsider = APIClient()
     outsider.force_authenticate(user=make_user("fora@example.com"))
 
-    response = outsider.post(
-        _votes_url(suggestion), {"value": "like"}, format="json"
-    )
+    response = outsider.post(_votes_url(suggestion), {"value": "like"}, format="json")
 
     assert response.status_code == 403
 
@@ -119,6 +116,8 @@ def test_author_cannot_vote_own_suggestion(deck, make_note, make_suggestion, use
 
 
 def test_post_and_list_suggestion_comments(auth_client, user, suggestion):
+    user.name = "Ana Souza"
+    user.save(update_fields=["name"])
     created = auth_client.post(
         _comments_url(suggestion), {"body": "Concordo com a correção."}, format="json"
     )
@@ -132,6 +131,7 @@ def test_post_and_list_suggestion_comments(auth_client, user, suggestion):
     assert len(results) == 1
     assert results[0]["body"] == "Concordo com a correção."
     assert results[0]["author"] == str(user.id)
+    assert results[0]["author_name"] == "Ana Souza"
 
 
 def test_empty_comment_body_is_rejected(auth_client, suggestion):

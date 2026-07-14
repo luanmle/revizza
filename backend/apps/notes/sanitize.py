@@ -33,6 +33,7 @@ _ALLOWED_ATTRIBUTES = {
     "img": {"src"},
     "span": {"style"},
     "div": {"style"},
+    "p": {"style"},
 }
 
 _ALLOWED_URL_SCHEMES = {"http", "https"}

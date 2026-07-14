@@ -19,6 +19,7 @@ def test_me_returns_profile(auth_client, user):
 
     assert response.status_code == 200
     body = response.json()
+    assert body["name"] == ""
     assert body["email"] == user.email
     assert body["consent_marketing_emails"] is False
     assert body["consent_research_data"] is False
@@ -38,6 +39,15 @@ def test_patch_consents_has_immediate_effect(auth_client, user):
     user.refresh_from_db()
     assert user.consent_marketing_emails is True
     assert user.consent_research_data is False  # não tocado pelo PATCH parcial
+
+
+def test_patch_me_updates_optional_display_name(auth_client, user):
+    response = auth_client.patch(ME_URL, {"name": "Ana Souza"}, format="json")
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Ana Souza"
+    user.refresh_from_db()
+    assert user.name == "Ana Souza"
 
 
 def test_suspended_user_gets_403(api_client, settings, db):

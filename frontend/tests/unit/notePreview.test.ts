@@ -10,14 +10,42 @@ describe("renderAnkiTemplate", () => {
     );
   });
 
-  it("mantém diretivas desconhecidas intactas", () => {
-    expect(renderAnkiTemplate("{{cloze:Texto}}", fields)).toBe("{{cloze:Texto}}");
+  it("renderiza cloze na frente e no verso", () => {
+    const clozeFields = { Texto: "A capital é {{c1::Brasília::cidade}}." };
+    expect(renderAnkiTemplate("{{cloze:Texto}}", clozeFields)).toBe(
+      'A capital é <span class="cloze">[cidade]</span>.',
+    );
+    expect(
+      renderAnkiTemplate("{{cloze:Texto}}", clozeFields, { side: "answer" }),
+    ).toBe('A capital é <span class="cloze">Brasília</span>.');
   });
 
   it("seção {{#C}} aparece só com campo preenchido", () => {
-    const template = "{{#Extra}}tem extra{{/Extra}}{{^Extra}}sem extra{{/Extra}}";
+    const template =
+      "{{#Extra}}tem extra{{/Extra}}{{^Extra}}sem extra{{/Extra}}";
     expect(renderAnkiTemplate(template, fields)).toBe("sem extra");
-    expect(renderAnkiTemplate(template, { ...fields, Extra: "x" })).toBe("tem extra");
+    expect(renderAnkiTemplate(template, { ...fields, Extra: "x" })).toBe(
+      "tem extra",
+    );
+  });
+
+  it("resolve condicionais aninhadas e a condição do cloze ativo", () => {
+    const template =
+      "{{#Frente}}fora {{#Verso}}dentro{{/Verso}}{{/Frente}} {{#c1}}dica{{/c1}}";
+    expect(renderAnkiTemplate(template, fields)).toBe("fora dentro dica");
+    expect(renderAnkiTemplate(template, { ...fields, Frente: "" })).toBe(
+      " dica",
+    );
+  });
+
+  it("aplica filtros de dica, texto e resposta digitada", () => {
+    expect(renderAnkiTemplate("{{hint:Verso}}", fields)).toContain(
+      "<summary>Mostrar dica</summary><b>15 dias</b>",
+    );
+    expect(renderAnkiTemplate("{{text:Verso}}", fields)).toBe("15 dias");
+    expect(renderAnkiTemplate("{{type:Frente}}", fields)).toContain(
+      'class="typeans"',
+    );
   });
 });
 
@@ -31,5 +59,15 @@ describe("buildCardDoc", () => {
     expect(doc).toContain("<style>.card { color: red }</style>");
     expect(doc).toContain("Qual o prazo?<hr><b>15 dias</b>");
     expect(doc).toContain('<body class="card">');
+  });
+
+  it("renderiza o ordinal de cloze solicitado", () => {
+    const doc = buildCardDoc(
+      { qfmt: "{{cloze:Texto}}", afmt: "{{cloze:Texto}}" },
+      { Texto: "{{c1::um}} e {{c2::dois}}" },
+      "",
+      2,
+    );
+    expect(doc).toContain('um e <span class="cloze">dois</span>');
   });
 });

@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface Comment {
   id: string;
   author: string | null;
+  author_name: string | null;
   body: string;
   created_at: string;
   edited_at: string | null;
@@ -52,8 +53,7 @@ export default function CommentThread({ noteId }: { noteId: string }) {
   });
   const comments = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      api.get<Paginated<Comment>>(pageParam),
+    queryFn: ({ pageParam }) => api.get<Paginated<Comment>>(pageParam),
     initialPageParam: `/notes/${noteId}/comments/`,
     getNextPageParam: (lastPage) => nextPath(lastPage.next),
     retry: false,
@@ -91,7 +91,10 @@ export default function CommentThread({ noteId }: { noteId: string }) {
     createComment.isError || editComment.isError || deleteComment.isError;
 
   return (
-    <section aria-labelledby={`comments-title-${noteId}`} className="border-t pt-4">
+    <section
+      aria-labelledby={`comments-title-${noteId}`}
+      className="border-t pt-4"
+    >
       <div className="mb-4 flex items-center gap-2">
         <MessageSquare aria-hidden className="size-5 text-primary" />
         <h3 id={`comments-title-${noteId}`} className="font-semibold">
@@ -104,7 +107,10 @@ export default function CommentThread({ noteId }: { noteId: string }) {
       </div>
 
       {comments.isPending && (
-        <div className="flex flex-col gap-3" aria-label="Carregando comentários">
+        <div
+          className="flex flex-col gap-3"
+          aria-label="Carregando comentários"
+        >
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
@@ -143,9 +149,8 @@ export default function CommentThread({ noteId }: { noteId: string }) {
                   <span className="font-medium">
                     {own
                       ? "Você"
-                      : comment.author
-                        ? `Usuário ${comment.author.slice(0, 8)}`
-                        : "Usuário removido"}
+                      : comment.author_name ||
+                        (comment.author ? "Usuário" : "Usuário removido")}
                   </span>
                   <span className="text-muted-foreground">
                     {formatDate(comment.created_at)}
@@ -244,7 +249,9 @@ export default function CommentThread({ noteId }: { noteId: string }) {
           disabled={comments.isFetchingNextPage}
           onClick={() => comments.fetchNextPage()}
         >
-          {comments.isFetchingNextPage ? "Carregando…" : "Carregar mais comentários"}
+          {comments.isFetchingNextPage
+            ? "Carregando…"
+            : "Carregar mais comentários"}
         </Button>
       )}
 

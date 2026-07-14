@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError, Paginated } from "@/lib/api-client";
+import RichTextEditor from "@/components/RichTextEditor";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,7 +50,8 @@ function notePreview(note: NoteItem): string {
 }
 
 function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) return "Não foi possível enviar a sugestão.";
+  if (!(error instanceof ApiError))
+    return "Não foi possível enviar a sugestão.";
   if (error.status === 403) return "Assine o deck para sugerir mudanças.";
   if (error.status === 429)
     return "Você enviou sugestões demais em pouco tempo. Aguarde alguns segundos.";
@@ -75,23 +77,33 @@ export default function SuggestBulkPage() {
         `/decks/${id}/notes/${pageParam ?? (q ? `?q=${encodeURIComponent(q)}` : "")}`,
       ),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => (last.next ? new URL(last.next).search : undefined),
+    getNextPageParam: (last) =>
+      last.next ? new URL(last.next).search : undefined,
     retry: false,
   });
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [category, setCategory] = useState<string | null>(null);
   const [justification, setJustification] = useState("");
+  const [field, setField] = useState("");
+  const [proposedValue, setProposedValue] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [formError, setFormError] = useState("");
 
-  // FR-017/FR-013: a correção compartilhada do lote são as tags propostas
-  // (edição compartilhada de campos fica com a T118)
   const proposedTags = [
-    ...new Set(tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean)),
+    ...new Set(
+      tagsInput
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ),
   ];
 
   const notes = notesQuery.data?.pages.flatMap((p) => p.results) ?? [];
+  const selectedNotes = notes.filter((note) => selected.has(note.id));
+  const commonFields = selectedNotes.length
+    ? Object.keys(selectedNotes[0].field_values)
+    : [];
 
   function toggle(noteId: string, checked: boolean) {
     setSelected((prev) => {
@@ -108,17 +120,22 @@ export default function SuggestBulkPage() {
         note_ids: [...selected],
         change_category: category,
         justification,
+        proposed_field_values: field ? { [field]: proposedValue } : {},
         tags: proposedTags,
       }),
   });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (selected.size === 0) return setFormError("Selecione pelo menos uma nota.");
+    if (selected.size === 0)
+      return setFormError("Selecione pelo menos uma nota.");
     if (!category) return setFormError("Escolha o tipo de mudança.");
-    if (!justification.trim()) return setFormError("A justificativa é obrigatória.");
-    if (proposedTags.length === 0)
-      return setFormError("Informe pelo menos uma tag para aplicar às notas.");
+    if (!justification.trim())
+      return setFormError("A justificativa é obrigatória.");
+    if (!field && proposedTags.length === 0)
+      return setFormError(
+        "Informe uma correção de campo ou pelo menos uma tag.",
+      );
     setFormError("");
     submit.mutate();
   }
@@ -155,7 +172,10 @@ export default function SuggestBulkPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-6">
-      <nav aria-label="Trilha de navegação" className="mb-4 text-sm text-muted-foreground">
+      <nav
+        aria-label="Trilha de navegação"
+        className="mb-4 text-sm text-muted-foreground"
+      >
         <Link href="/decks" className="hover:text-foreground">
           Catálogo
         </Link>{" "}
@@ -166,10 +186,12 @@ export default function SuggestBulkPage() {
         / <span className="text-foreground">Sugestão em lote</span>
       </nav>
 
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight">Sugestão em lote</h1>
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight">
+        Sugestão em lote
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        O mesmo tipo de mudança, tags e justificativa serão aplicados a todas as
-        notas selecionadas, em uma única sugestão.
+        A mesma correção de campo e/ou tags será aplicada a todas as notas
+        selecionadas, em uma única sugestão.
       </p>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-6">
@@ -236,7 +258,11 @@ export default function SuggestBulkPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="change-category">Tipo de mudança</Label>
-          <Select value={category} onValueChange={setCategory} items={CATEGORIES}>
+          <Select
+            value={category}
+            onValueChange={setCategory}
+            items={CATEGORIES}
+          >
             <SelectTrigger id="change-category" className="w-full sm:w-64">
               <SelectValue placeholder="Escolha o tipo" />
             </SelectTrigger>
@@ -251,8 +277,46 @@ export default function SuggestBulkPage() {
         </div>
 
         <div className="flex flex-col gap-2">
+          <Label htmlFor="shared-field">Campo a corrigir (opcional)</Label>
+          <select
+            id="shared-field"
+            value={field}
+            disabled={selected.size === 0}
+            className="min-h-11 rounded-lg border bg-background px-3 text-base"
+            onChange={(event) => {
+              const nextField = event.target.value;
+              setField(nextField);
+              setProposedValue(selectedNotes[0]?.field_values[nextField] ?? "");
+            }}
+          >
+            <option value="">Somente tags</option>
+            {commonFields.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          {selected.size === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Selecione as notas para escolher um campo compartilhado.
+            </p>
+          )}
+        </div>
+
+        {field && (
+          <div className="flex flex-col gap-2">
+            <Label>Correção compartilhada para {field}</Label>
+            <RichTextEditor
+              value={proposedValue}
+              onChange={setProposedValue}
+              ariaLabel={`Correção compartilhada do campo ${field}`}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
           <Label htmlFor="proposed-tags">
-            Tags a aplicar (separadas por vírgula)
+            Tags a aplicar (opcional, separadas por vírgula)
           </Label>
           <Input
             id="proposed-tags"

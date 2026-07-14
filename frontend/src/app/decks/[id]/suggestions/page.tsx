@@ -33,24 +33,35 @@ import {
 
 interface Suggestion {
   id: string;
+  deck: string;
   type: "change" | "new_note" | "deletion";
   status: "pending" | "accepted" | "rejected";
   author: string | null;
+  author_name: string | null;
   change_category: string | null;
   justification: string;
   proposed_field_values: Record<string, string> | null;
   tags: string[];
   empty_fields: string[];
   note_ids: string[];
+  note_context: NoteContext[];
   likes_count: number;
   dislikes_count: number;
   rejection_reason: string | null;
   created_at: string;
 }
 
+interface NoteContext {
+  id: string;
+  field_values: Record<string, string>;
+  tags: string[];
+  open_suggestion_count: number;
+}
+
 interface Comment {
   id: string;
   author: string | null;
+  author_name: string | null;
   body: string;
   created_at: string;
 }
@@ -58,7 +69,7 @@ interface Comment {
 interface DeckDetail {
   id: string;
   name: string;
-  moderators: { id: string; email: string }[];
+  is_moderator: boolean;
 }
 
 // FR-021: três abas — mudanças, notas novas e exclusões
@@ -113,7 +124,13 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
 }
 
-function CommentsThread({ suggestionId }: { suggestionId: string }) {
+function CommentsThread({
+  suggestionId,
+  meId,
+}: {
+  suggestionId: string;
+  meId: string | null;
+}) {
   const queryClient = useQueryClient();
   const queryKey = ["suggestion-comments", suggestionId];
   // FR-024/US5/AC5: thread cronológica completa via cursor + "Carregar mais"
@@ -161,8 +178,11 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
       {comments.map((comment) => (
         <div key={comment.id} className="text-sm">
           <p className="text-muted-foreground">
-            <span className="font-mono">
-              {comment.author?.slice(0, 8) ?? "removido"}
+            <span className="font-medium">
+              {comment.author === meId
+                ? "Você"
+                : comment.author_name ||
+                  (comment.author ? "Usuário" : "Usuário removido")}
             </span>{" "}
             · {formatDate(comment.created_at)}
           </p>
@@ -218,6 +238,96 @@ function CommentsThread({ suggestionId }: { suggestionId: string }) {
   );
 }
 
+function HtmlValue({ html }: { html: string }) {
+  return html ? (
+    <div dangerouslySetInnerHTML={{ __html: html }} />
+  ) : (
+    <p className="text-sm text-muted-foreground">(vazio)</p>
+  );
+}
+
+function NoteSuggestionContext({
+  note,
+  suggestion,
+}: {
+  note: NoteContext;
+  suggestion: Suggestion;
+}) {
+  const fields = Object.entries(suggestion.proposed_field_values ?? {});
+
+  return (
+    <details className="rounded-lg border bg-muted/20 p-3">
+      <summary className="cursor-pointer text-sm font-medium">
+        <span className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/decks/${suggestion.deck}/notes/${note.id}/suggest`}
+            className="font-mono text-primary underline-offset-4 hover:underline"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Nota {note.id.slice(0, 8)}
+          </Link>
+          <Badge variant="outline" className="rounded-full">
+            {note.open_suggestion_count}{" "}
+            {note.open_suggestion_count === 1
+              ? "sugestão aberta"
+              : "sugestões abertas"}
+          </Badge>
+        </span>
+      </summary>
+
+      <div className="mt-3 flex flex-col gap-3">
+        {fields.map(([field, proposed]) => (
+          <div key={field}>
+            <p className="mb-1 text-sm font-medium">{field}</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
+                  Atual
+                </p>
+                <HtmlValue html={note.field_values[field] ?? ""} />
+              </div>
+              <div className="rounded-lg bg-success/10 p-3">
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
+                  Sugerido
+                </p>
+                <HtmlValue html={proposed} />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {suggestion.tags.length > 0 && (
+          <div>
+            <p className="mb-1 text-sm font-medium">Tags</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="rounded-lg bg-destructive/10 p-3">
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
+                  Atual
+                </p>
+                <p>{note.tags.join(", ") || "(sem tags)"}</p>
+              </div>
+              <div className="rounded-lg bg-success/10 p-3">
+                <p className="mb-1 text-sm font-medium text-muted-foreground">
+                  Sugerido
+                </p>
+                <p>
+                  {[...new Set([...note.tags, ...suggestion.tags])].join(", ")}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {suggestion.type === "deletion" && (
+          <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+            Sugerido: excluir esta nota do deck oficial.
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 function SuggestionCard({
   suggestion,
   isModerator,
@@ -261,8 +371,11 @@ function SuggestionCard({
             </Badge>
           )}
           <span className="text-sm text-muted-foreground">
-            <span className="font-mono">
-              {suggestion.author?.slice(0, 8) ?? "removido"}
+            <span className="font-medium">
+              {isOwn
+                ? "Você"
+                : suggestion.author_name ||
+                  (suggestion.author ? "Usuário" : "Usuário removido")}
             </span>{" "}
             · {formatDate(suggestion.created_at)}
           </span>
@@ -270,7 +383,19 @@ function SuggestionCard({
 
         <p>{suggestion.justification}</p>
 
-        {proposedFields.length > 0 && (
+        {suggestion.note_context.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {suggestion.note_context.map((note) => (
+              <NoteSuggestionContext
+                key={note.id}
+                note={note}
+                suggestion={suggestion}
+              />
+            ))}
+          </div>
+        )}
+
+        {suggestion.note_context.length === 0 && proposedFields.length > 0 && (
           <details className="rounded-lg border bg-muted/30 p-3">
             <summary className="cursor-pointer text-sm font-medium">
               Campos propostos (
@@ -298,7 +423,7 @@ function SuggestionCard({
           </details>
         )}
 
-        {suggestion.tags.length > 0 && (
+        {suggestion.note_context.length === 0 && suggestion.tags.length > 0 && (
           <p className="text-sm text-muted-foreground">
             Tags propostas: {suggestion.tags.join(", ")}
           </p>
@@ -364,7 +489,9 @@ function SuggestionCard({
           )}
         </div>
 
-        {threadOpen && <CommentsThread suggestionId={suggestion.id} />}
+        {threadOpen && (
+          <CommentsThread suggestionId={suggestion.id} meId={meId} />
+        )}
       </CardContent>
     </Card>
   );
@@ -394,7 +521,7 @@ export default function CommunitySuggestionsPage() {
     queryFn: () => api.get<DeckDetail>(`/decks/${id}/`),
     retry: false,
   });
-  const isModerator = !!me && !!deck?.moderators.some((m) => m.id === me.id);
+  const isModerator = deck?.is_moderator ?? false;
 
   const params = new URLSearchParams({ type: tab });
   if (status !== "all") params.set("status", status);
@@ -530,13 +657,12 @@ export default function CommunitySuggestionsPage() {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="filter-author">ID do autor</Label>
+          <Label htmlFor="filter-author">Autor</Label>
           <Input
             id="filter-author"
             value={authorInput}
             onChange={(e) => setAuthorInput(e.target.value)}
-            placeholder="UUID do autor"
-            className="font-mono"
+            placeholder="Nome ou UUID do autor"
           />
         </div>
         <div className="flex flex-col gap-1">

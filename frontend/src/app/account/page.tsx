@@ -13,10 +13,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError } from "@/lib/api-client";
 
 interface Profile {
+  name: string;
   email: string;
   target_career: string | null;
   target_board: string | null;
@@ -36,6 +39,10 @@ export default function AccountPage() {
     // FR-045: efeito imediato ao alternar
     mutationFn: (patch: Partial<Profile>) =>
       api.patch<Profile>("/accounts/me/consents/", patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
+  const updateProfile = useMutation({
+    mutationFn: (name: string) => api.patch<Profile>("/accounts/me/", { name }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
   });
 
@@ -76,24 +83,63 @@ export default function AccountPage() {
             <CardTitle>Perfil</CardTitle>
             <CardDescription>{me.email}</CardDescription>
           </CardHeader>
-          {(me.target_career || me.target_board) && (
-            <CardContent className="grid gap-2 text-sm">
-              {me.target_career && (
-                <p>
-                  <span className="text-muted-foreground">Carreira alvo:</span>{" "}
-                  {me.target_career}
+          <CardContent className="grid gap-4">
+            <form
+              className="grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                updateProfile.mutate(String(form.get("name") ?? "").trim());
+              }}
+            >
+              <Label htmlFor="profile-name">Nome na comunidade</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="profile-name"
+                  name="name"
+                  defaultValue={me.name}
+                  maxLength={120}
+                  autoComplete="name"
+                  placeholder="Seu nome (opcional)"
+                />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={updateProfile.isPending}
+                >
+                  {updateProfile.isPending ? "Salvando…" : "Salvar nome"}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Usado como autoria nas sugestões e discussões.
+              </p>
+              {updateProfile.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  Não foi possível salvar o nome.
                 </p>
               )}
-              {me.target_board && (
-                <p>
-                  <span className="text-muted-foreground">
-                    Banca ou edital:
-                  </span>{" "}
-                  {me.target_board}
-                </p>
-              )}
-            </CardContent>
-          )}
+            </form>
+            {(me.target_career || me.target_board) && (
+              <div className="grid gap-2 text-sm">
+                {me.target_career && (
+                  <p>
+                    <span className="text-muted-foreground">
+                      Carreira alvo:
+                    </span>{" "}
+                    {me.target_career}
+                  </p>
+                )}
+                {me.target_board && (
+                  <p>
+                    <span className="text-muted-foreground">
+                      Banca ou edital:
+                    </span>{" "}
+                    {me.target_board}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         <Card>

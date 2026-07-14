@@ -46,6 +46,7 @@ export default function RegisterPage() {
     const form = new FormData(event.currentTarget);
     try {
       await api.post("/accounts/register/", {
+        name: form.get("name") || "",
         email: form.get("email"),
         password: form.get("password"),
         target_career: targetCareer || null,
@@ -97,6 +98,22 @@ export default function RegisterPage() {
         <CardContent>
           <form className="flex flex-col gap-6" onSubmit={onSubmit}>
             <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">
+                  Nome{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (opcional)
+                  </span>
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  maxLength={120}
+                  autoComplete="name"
+                  placeholder="Como você quer aparecer na comunidade"
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input

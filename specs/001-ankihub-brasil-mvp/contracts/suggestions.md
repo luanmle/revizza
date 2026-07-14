@@ -9,7 +9,7 @@ Ver convenções gerais em `api-conventions.md`.
 | POST | `/api/v1/decks/{id}/suggestions/new-note/` | usuário (assinante) | Propõe nota nova: campos do tipo de nota do deck, `justification`, `tags` | FR-018 |
 | POST | `/api/v1/notes/{id}/suggestions/deletion/` | usuário (assinante) | Sugere exclusão da nota, `justification` obrigatória | FR-019 |
 | GET | `/api/v1/decks/{id}/suggestions/` | usuário (assinante) | Lista sugestões do deck; `?type=change\|new_note\|deletion`, `?status=`, `?author=`, `?note_id=`, `?created_after=`/`created_before=`, `?submission=individual\|bulk` | FR-021, FR-022 |
-| GET | `/api/v1/suggestions/{id}/` | usuário (assinante do deck) | Detalhe: autor, data, tipo, justificativa, diff/campos propostos, notas-alvo, contagem de curtidas | FR-020 |
+| GET | `/api/v1/suggestions/{id}/` | usuário (assinante do deck) | Detalhe: `author_name`, data, tipo, justificativa, diff/campos propostos, contexto atual das notas-alvo com contagem de sugestões abertas, curtidas | FR-020 |
 | POST | `/api/v1/suggestions/{id}/votes/` | usuário (assinante) | `{"value": "like"\|"dislike"}`; idempotente (upsert por usuário) | FR-023 |
 | DELETE | `/api/v1/suggestions/{id}/votes/me/` | usuário (assinante) | Remove o próprio voto | FR-023 |
 | GET | `/api/v1/suggestions/{id}/comments/` | usuário (assinante) | Thread de discussão da sugestão (distinta da thread geral da nota) | FR-024 |

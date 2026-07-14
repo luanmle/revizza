@@ -1,8 +1,10 @@
 """Endpoints de sugestões e da tela Community Suggestions (contracts/suggestions.md)."""
 
+import uuid
+
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.utils.decorators import method_decorator
@@ -58,10 +60,28 @@ def _subscriber_or_none(user, deck):
     return Subscription.objects.filter(user=user, deck=deck).first()
 
 
+def _target_context_prefetch():
+    return Prefetch(
+        "target_notes",
+        queryset=SuggestionTargetNote.objects.select_related("note").annotate(
+            open_suggestion_count=Count(
+                "note__suggestion_targets",
+                filter=Q(
+                    note__suggestion_targets__suggestion__status=Suggestion.Status.PENDING
+                ),
+                distinct=True,
+            )
+        ),
+    )
+
+
 def _suggestion_for_subscriber(request, suggestion_id) -> Suggestion:
     """404 se não existe; 403 se o usuário não assina o deck da sugestão."""
     suggestion = get_object_or_404(
-        Suggestion.objects.select_related("deck"), pk=suggestion_id
+        Suggestion.objects.select_related("deck", "author").prefetch_related(
+            _target_context_prefetch()
+        ),
+        pk=suggestion_id,
     )
     if not _subscriber_or_none(request.user, suggestion.deck):
         raise PermissionDenied("Assine o deck para acessar as sugestões.")
@@ -84,7 +104,13 @@ def _change_validation_error(deck, notes, validated) -> Response | None:
     unknown = [f for f in fields if f not in deck.note_type.field_names]
     if unknown:
         return Response(
-            {"errors": {"proposed_field_values": [f"Campos desconhecidos: {', '.join(unknown)}."]}},
+            {
+                "errors": {
+                    "proposed_field_values": [
+                        f"Campos desconhecidos: {', '.join(unknown)}."
+                    ]
+                }
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
     is_noop = all(
@@ -184,9 +210,7 @@ class NewNoteSuggestionCreateView(APIView):
     def post(self, request, deck_id):
         if limited := _rate_limit_response(request):
             return limited
-        deck = get_object_or_404(
-            Deck.objects.select_related("note_type"), pk=deck_id
-        )
+        deck = get_object_or_404(Deck.objects.select_related("note_type"), pk=deck_id)
         if not _subscriber_or_none(request.user, deck):
             raise PermissionDenied("Assine o deck para sugerir uma nota nova.")
         serializer = NewNoteSuggestionSerializer(
@@ -248,7 +272,8 @@ class DeckSuggestionListView(generics.ListAPIView):
 
         qs = (
             Suggestion.objects.filter(deck=deck)
-            .prefetch_related("target_notes")
+            .select_related("author")
+            .prefetch_related(_target_context_prefetch())
             # FR-054: contagens no annotate — sem query por sugestão na lista
             .annotate(
                 likes=Count(
@@ -267,12 +292,17 @@ class DeckSuggestionListView(generics.ListAPIView):
         for param, lookup in [
             ("type", "type"),
             ("status", "status"),
-            ("author", "author_id"),
             ("note_id", "target_notes__note_id"),
             ("created_after", "created_at__gte"),
         ]:
             if params.get(param):
                 qs = qs.filter(**{lookup: params[param]})
+
+        if author := params.get("author"):
+            try:
+                qs = qs.filter(author_id=uuid.UUID(author))
+            except ValueError:
+                qs = qs.filter(author__name__icontains=author)
 
         if created_before := params.get("created_before"):
             # data sem hora inclui o dia inteiro (FR-022, US5/AC2)
@@ -346,9 +376,13 @@ class SuggestionCommentsView(generics.ListCreateAPIView):
     pagination_class = SuggestionCommentPagination
 
     def get_queryset(self):
-        suggestion = _suggestion_for_subscriber(self.request, self.kwargs["suggestion_id"])
-        return Comment.objects.filter(suggestion=suggestion)
+        suggestion = _suggestion_for_subscriber(
+            self.request, self.kwargs["suggestion_id"]
+        )
+        return Comment.objects.filter(suggestion=suggestion).select_related("author")
 
     def perform_create(self, serializer):
-        suggestion = _suggestion_for_subscriber(self.request, self.kwargs["suggestion_id"])
+        suggestion = _suggestion_for_subscriber(
+            self.request, self.kwargs["suggestion_id"]
+        )
         serializer.save(author=self.request.user, suggestion=suggestion)

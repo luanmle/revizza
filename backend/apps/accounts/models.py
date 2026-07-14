@@ -14,6 +14,7 @@ class User(BaseModel):
 
     auth_id = models.UUIDField(unique=True)
     email = models.EmailField()
+    name = models.CharField(max_length=120, blank=True, default="")
     target_career = models.CharField(
         max_length=16, choices=TargetCareer.choices, null=True, blank=True
     )

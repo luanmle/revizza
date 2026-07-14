@@ -8,7 +8,12 @@ from rest_framework.views import APIView
 
 from . import supabase_gateway
 from .models import User
-from .serializers import ConsentsSerializer, RegisterSerializer, UserSerializer
+from .serializers import (
+    ConsentsSerializer,
+    ProfileUpdateSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 
 
 class RegisterView(APIView):
@@ -27,6 +32,7 @@ class RegisterView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         user = User.objects.create(
             auth_id=auth_id,
+            name=data.get("name", "").strip(),
             email=data["email"],
             target_career=data.get("target_career"),
             target_board=data.get("target_board") or None,
@@ -56,6 +62,14 @@ class MeView(APIView):
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(
+            instance=request.user, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+
 
 class ConsentsView(APIView):
     """PATCH /accounts/me/consents/ — efeito imediato (FR-005, FR-045)."""
@@ -81,8 +95,7 @@ class DeletionRequestView(APIView):
         return Response(
             {
                 "requested_at": request.user.deletion_requested_at,
-                "scheduled_for": request.user.deletion_requested_at
-                + self.grace_period,
+                "scheduled_for": request.user.deletion_requested_at + self.grace_period,
             },
             status=status.HTTP_202_ACCEPTED,
         )
@@ -93,7 +106,9 @@ class DeletionRequestView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         if timezone.now() >= requested_at + self.grace_period:
             return Response(
-                {"detail": "A carência terminou; a exclusão não pode mais ser cancelada."},
+                {
+                    "detail": "A carência terminou; a exclusão não pode mais ser cancelada."
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         request.user.deletion_requested_at = None

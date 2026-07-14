@@ -167,6 +167,8 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
     dislikes_count = serializers.SerializerMethodField()
     tags = serializers.ListField(source="proposed_tags", read_only=True)
     empty_fields = serializers.SerializerMethodField()
+    author_name = serializers.SerializerMethodField()
+    note_context = serializers.SerializerMethodField()
 
     class Meta:
         model = Suggestion
@@ -176,12 +178,14 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
             "deck",
             "status",
             "author",
+            "author_name",
             "change_category",
             "justification",
             "proposed_field_values",
             "tags",
             "empty_fields",
             "note_ids",
+            "note_context",
             "likes_count",
             "dislikes_count",
             "rejection_reason",
@@ -190,6 +194,27 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
 
     def get_note_ids(self, suggestion) -> list[str]:
         return _note_ids(suggestion)
+
+    def get_author_name(self, suggestion):
+        return suggestion.author.name or None if suggestion.author else None
+
+    def get_note_context(self, suggestion) -> list[dict]:
+        context = []
+        for target in suggestion.target_notes.all():
+            open_count = getattr(target, "open_suggestion_count", None)
+            if open_count is None:
+                open_count = target.note.suggestion_targets.filter(
+                    suggestion__status=Suggestion.Status.PENDING
+                ).count()
+            context.append(
+                {
+                    "id": str(target.note_id),
+                    "field_values": target.note.field_values,
+                    "tags": target.note.tags,
+                    "open_suggestion_count": open_count,
+                }
+            )
+        return context
 
     def get_likes_count(self, suggestion) -> int:
         annotated = getattr(suggestion, "likes", None)

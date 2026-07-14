@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { TextAlign } from "@tiptap/extension-text-align";
+import { FontSize, TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   Code,
   Italic,
@@ -40,6 +46,9 @@ export default function RichTextEditor({ value, onChange, ariaLabel }: Props) {
         horizontalRule: false,
         link: { openOnClick: false },
       }),
+      TextAlign.configure({ types: ["paragraph"] }),
+      TextStyle,
+      FontSize,
     ],
     content: value,
     immediatelyRender: false,
@@ -70,6 +79,8 @@ export default function RichTextEditor({ value, onChange, ariaLabel }: Props) {
       bulletList: e?.isActive("bulletList") ?? false,
       orderedList: e?.isActive("orderedList") ?? false,
       link: e?.isActive("link") ?? false,
+      textAlign: e?.getAttributes("paragraph").textAlign ?? "left",
+      fontSize: e?.getAttributes("textStyle").fontSize ?? "",
     }),
   });
 
@@ -84,33 +95,111 @@ export default function RichTextEditor({ value, onChange, ariaLabel }: Props) {
   }
 
   const marks = [
-    { icon: Bold, label: "Negrito", active: active?.bold, run: () => editor?.chain().focus().toggleBold().run() },
-    { icon: Italic, label: "Itálico", active: active?.italic, run: () => editor?.chain().focus().toggleItalic().run() },
-    { icon: Underline, label: "Sublinhado", active: active?.underline, run: () => editor?.chain().focus().toggleUnderline().run() },
-    { icon: Strikethrough, label: "Riscado", active: active?.strike, run: () => editor?.chain().focus().toggleStrike().run() },
-    { icon: List, label: "Lista", active: active?.bulletList, run: () => editor?.chain().focus().toggleBulletList().run() },
-    { icon: ListOrdered, label: "Lista numerada", active: active?.orderedList, run: () => editor?.chain().focus().toggleOrderedList().run() },
+    {
+      icon: Bold,
+      label: "Negrito",
+      active: active?.bold,
+      run: () => editor?.chain().focus().toggleBold().run(),
+    },
+    {
+      icon: Italic,
+      label: "Itálico",
+      active: active?.italic,
+      run: () => editor?.chain().focus().toggleItalic().run(),
+    },
+    {
+      icon: Underline,
+      label: "Sublinhado",
+      active: active?.underline,
+      run: () => editor?.chain().focus().toggleUnderline().run(),
+    },
+    {
+      icon: Strikethrough,
+      label: "Riscado",
+      active: active?.strike,
+      run: () => editor?.chain().focus().toggleStrike().run(),
+    },
+    {
+      icon: List,
+      label: "Lista",
+      active: active?.bulletList,
+      run: () => editor?.chain().focus().toggleBulletList().run(),
+    },
+    {
+      icon: ListOrdered,
+      label: "Lista numerada",
+      active: active?.orderedList,
+      run: () => editor?.chain().focus().toggleOrderedList().run(),
+    },
     { icon: LinkIcon, label: "Link", active: active?.link, run: setLink },
+  ];
+
+  const alignments = [
+    { value: "left", label: "Alinhar à esquerda", icon: AlignLeft },
+    { value: "center", label: "Centralizar", icon: AlignCenter },
+    { value: "right", label: "Alinhar à direita", icon: AlignRight },
+    { value: "justify", label: "Justificar", icon: AlignJustify },
   ];
 
   return (
     <div className="rounded-lg border focus-within:ring-2 focus-within:ring-ring/50">
-      <div className="flex items-center gap-0.5 border-b p-1">
-        {!rawMode &&
-          marks.map(({ icon: Icon, label, active: isActive, run }) => (
-            <Button
-              key={label}
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={label}
-              aria-pressed={isActive}
-              className={isActive ? "bg-muted text-foreground" : ""}
-              onClick={run}
+      <div className="flex flex-wrap items-center gap-0.5 border-b p-1">
+        {!rawMode && (
+          <>
+            {marks.map(({ icon: Icon, label, active: isActive, run }) => (
+              <Button
+                key={label}
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={label}
+                aria-pressed={isActive}
+                className={isActive ? "bg-muted text-foreground" : ""}
+                onClick={run}
+              >
+                <Icon aria-hidden />
+              </Button>
+            ))}
+            <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+            {alignments.map(({ value: alignment, label, icon: Icon }) => (
+              <Button
+                key={alignment}
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={label}
+                aria-pressed={active?.textAlign === alignment}
+                className={
+                  active?.textAlign === alignment
+                    ? "bg-muted text-foreground"
+                    : ""
+                }
+                onClick={() =>
+                  editor?.chain().focus().setTextAlign(alignment).run()
+                }
+              >
+                <Icon aria-hidden />
+              </Button>
+            ))}
+            <select
+              aria-label="Tamanho da fonte"
+              value={active?.fontSize ?? ""}
+              className="min-h-11 rounded-md border bg-background px-2 text-sm sm:min-h-7"
+              onChange={(event) => {
+                const size = event.target.value;
+                if (size) editor?.chain().focus().setFontSize(size).run();
+                else editor?.chain().focus().unsetFontSize().run();
+              }}
             >
-              <Icon aria-hidden />
-            </Button>
-          ))}
+              <option value="">Tamanho</option>
+              {[12, 14, 16, 18, 24, 32].map((size) => (
+                <option key={size} value={`${size}px`}>
+                  {size} px
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <Button
           type="button"
           variant="ghost"

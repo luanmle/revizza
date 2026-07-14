@@ -26,7 +26,8 @@ interface DeckDetail {
   subject_tags: string[];
   note_count: number;
   subscriber_count: number;
-  moderators: { id: string; email: string }[];
+  moderator_count: number;
+  is_moderator: boolean;
   is_subscribed: boolean;
 }
 
@@ -156,8 +157,8 @@ export default function DeckDetailPage() {
           </span>
           <span className="inline-flex items-center gap-2">
             <ShieldCheck aria-hidden />
-            {deck.moderators.length}{" "}
-            {deck.moderators.length === 1 ? "moderador" : "moderadores"}
+            {deck.moderator_count}{" "}
+            {deck.moderator_count === 1 ? "moderador" : "moderadores"}
           </span>
         </CardContent>
       </Card>

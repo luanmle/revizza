@@ -55,7 +55,9 @@ def test_default_order_is_by_subscribers_without_profile(auth_client, make_deck)
     assert names == ["Popular", "Nicho"]  # FR-008: fallback mais assinantes
 
 
-def test_detail_includes_moderators(auth_client, user, make_deck):
+def test_detail_exposes_only_non_sensitive_moderator_state(
+    auth_client, user, make_deck
+):
     from apps.catalog.models import DeckModerator
 
     deck = make_deck(name="Com moderador")
@@ -66,7 +68,10 @@ def test_detail_includes_moderators(auth_client, user, make_deck):
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "Com moderador"
-    assert body["moderators"] == [{"id": str(user.id), "email": user.email}]
+    assert "moderators" not in body
+    assert user.email not in str(body)
+    assert body["moderator_count"] == 1
+    assert body["is_moderator"] is True
     assert body["is_subscribed"] is False
 
 

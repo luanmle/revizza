@@ -33,14 +33,14 @@ class NoteCommentsView(generics.ListCreateAPIView):
         return note
 
     def get_queryset(self):
-        return Comment.objects.filter(note=self.get_note())
+        return Comment.objects.filter(note=self.get_note()).select_related("author")
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, note=self.get_note())
 
 
 class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.select_related("author")
     serializer_class = CommentSerializer
     lookup_url_kwarg = "comment_id"
     http_method_names = ["patch", "delete", "options"]
@@ -71,9 +71,7 @@ class ReportCreateView(APIView):
             comment=comment,
             **serializer.validated_data,
         )
-        return Response(
-            ReportSerializer(report).data, status=status.HTTP_201_CREATED
-        )
+        return Response(ReportSerializer(report).data, status=status.HTTP_201_CREATED)
 
 
 class SuggestionCommentReportCreateView(ReportCreateView):

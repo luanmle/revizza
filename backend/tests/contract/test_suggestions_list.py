@@ -37,9 +37,7 @@ def test_lists_deck_suggestions_cursor_paginated(
     body = response.json()
     # convenção: paginação cursor com next/previous/results (api-conventions.md)
     assert set(body) >= {"next", "previous", "results"}
-    assert {item["id"] for item in body["results"]} == {
-        str(s.id) for s in suggestions
-    }
+    assert {item["id"] for item in body["results"]} == {str(s.id) for s in suggestions}
 
 
 def test_only_returns_suggestions_of_the_deck(
@@ -57,9 +55,7 @@ def test_only_returns_suggestions_of_the_deck(
 
 def test_filter_by_status(auth_client, deck, make_note, make_suggestion):
     pending = make_suggestion(notes=[make_note(deck=deck)])
-    make_suggestion(
-        notes=[make_note(deck=deck)], status=Suggestion.Status.REJECTED
-    )
+    make_suggestion(notes=[make_note(deck=deck)], status=Suggestion.Status.REJECTED)
 
     response = auth_client.get(_url(deck), {"status": "pending"})
 
@@ -78,9 +74,7 @@ def test_filter_by_type(auth_client, deck, make_note, make_suggestion):
     assert _ids(response) == {str(deletion.id)}
 
 
-def test_filter_by_author(
-    auth_client, deck, make_note, make_suggestion, make_user
-):
+def test_filter_by_author(auth_client, deck, make_note, make_suggestion, make_user):
     other = make_user("outra@example.com")
     theirs = make_suggestion(notes=[make_note(deck=deck)], author=other)
     make_suggestion(notes=[make_note(deck=deck)])
@@ -149,9 +143,12 @@ def test_detail_returns_full_suggestion_with_like_count(
     from apps.suggestions.models import SuggestionVote
 
     note = make_note(deck=deck)
+    user.name = "Ana Souza"
+    user.save(update_fields=["name"])
     suggestion = make_suggestion(
         notes=[note], proposed_field_values={"Verso": "Corrigido"}
     )
+    make_suggestion(notes=[note])
     voter = make_user("votante@example.com")
     SuggestionVote.objects.create(
         suggestion=suggestion, user=voter, value=SuggestionVote.Value.LIKE
@@ -165,9 +162,18 @@ def test_detail_returns_full_suggestion_with_like_count(
     assert body["type"] == "change"
     assert body["status"] == "pending"
     assert body["author"] == str(user.id)
+    assert body["author_name"] == "Ana Souza"
     assert body["justification"] == suggestion.justification
     assert body["proposed_field_values"] == {"Verso": "Corrigido"}
     assert body["note_ids"] == [str(note.id)]
+    assert body["note_context"] == [
+        {
+            "id": str(note.id),
+            "field_values": note.field_values,
+            "tags": note.tags,
+            "open_suggestion_count": 2,
+        }
+    ]
     assert body["likes_count"] == 1
     assert body["dislikes_count"] == 0
     assert "created_at" in body
@@ -210,9 +216,7 @@ def test_list_query_count_is_bounded(
 
     voter = make_user("votante@example.com")
     for _ in range(3):
-        suggestion = make_suggestion(
-            notes=[make_note(deck=deck), make_note(deck=deck)]
-        )
+        suggestion = make_suggestion(notes=[make_note(deck=deck), make_note(deck=deck)])
         SuggestionVote.objects.create(
             suggestion=suggestion, user=voter, value=SuggestionVote.Value.LIKE
         )
