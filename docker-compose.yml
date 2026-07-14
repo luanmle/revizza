@@ -1,0 +1,34 @@
+# Roda backend + frontend em modo produção localmente, contra o Supabase real.
+# DB/auth/storage são externos (Supabase) — nenhum container de Postgres aqui.
+# O add-on não dockeriza (roda dentro do Anki Desktop).
+#
+# Uso:
+#   docker compose --env-file frontend/.env.local up --build
+#   (o --env-file alimenta os build args NEXT_PUBLIC_*; o runtime env de cada
+#    serviço vem do env_file respectivo)
+#
+# Primeira vez (migrations, paridade com o release phase do Heroku):
+#   docker compose run --rm backend python manage.py migrate
+#   docker compose run --rm backend python manage.py createcachetable
+#
+# Dev com hot-reload continua nativo: `python manage.py runserver` + `npm run dev`.
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - backend/.env
+    environment:
+      # TLS termina fora do container em prod real; local não tem proxy HTTPS.
+      - DJANGO_SETTINGS_MODULE=config.settings.dev
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    ports:
+      - "3000:3000"

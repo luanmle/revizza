@@ -14,6 +14,8 @@ htmlcov/
 *.sqlite3
 dist/
 build/
+backend/staticfiles/
+frontend/.next/
 
 # Environment variables
 .env

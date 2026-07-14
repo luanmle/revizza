@@ -34,6 +34,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # antes de qualquer middleware que responda
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # logo após SecurityMiddleware (doc whitenoise)
     "config.middleware.ApiVersionCompatibilityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -85,6 +86,10 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+# Servido pelo whitenoise (único consumidor de static é o Django admin — moderação US13).
+# ponytail: storage padrão, sem manifest/cache-busting; trocar por
+# whitenoise.storage.CompressedManifestStaticFilesStorage se admin static virar gargalo.
+STATIC_ROOT = BASE_DIR / "staticfiles"
 # Console por padrão (dev/teste); prod troca por SMTP via env (T145 / FR-050)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get(
