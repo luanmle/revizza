@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 
 from apps.catalog.models import Deck, DeckModerator, Subscription
 from apps.notes.models import MediaFile, Note, NoteType
-from apps.notes.sanitize import sanitize_field_values
+from apps.notes.sanitize import sanitize_field_values, sanitize_html
 from apps.notifications.models import Notification
 
 from . import media
@@ -313,7 +313,7 @@ class PublishView(APIView):
                 creator=request.user,
                 name=data["name"],
                 anki_deck_name=data["name"],
-                description=data.get("description", ""),
+                description=sanitize_html(data.get("description", "")),
                 subject_tags=data.get("subject_tags", []),
             )
             DeckModerator.objects.create(deck=deck, user=request.user, status="active")

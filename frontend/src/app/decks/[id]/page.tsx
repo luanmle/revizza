@@ -145,9 +145,10 @@ export default function DeckDetailPage() {
             )}
           </div>
           {deck.description && (
-            <p className="mt-2 max-w-[70ch] text-muted-foreground">
-              {deck.description}
-            </p>
+            <div
+              className="mt-2 max-w-[70ch] break-words text-muted-foreground [&_a]:text-primary [&_a]:underline [&_img]:max-w-full [&_ol]:list-decimal [&_ol]:pl-5 [&_p:not(:last-child)]:mb-2 [&_ul]:list-disc [&_ul]:pl-5"
+              dangerouslySetInnerHTML={{ __html: deck.description }}
+            />
           )}
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm text-muted-foreground">
             <span className="inline-flex min-w-0 items-center gap-2">

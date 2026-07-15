@@ -69,6 +69,27 @@ def test_publish_creates_deck_notes_and_moderator(auth_client, user):
     assert note.anki_deck_path == "Parte Geral"
 
 
+def test_publish_sanitizes_deck_description(auth_client):
+    deck_id = uuid.uuid4()
+
+    response = auth_client.post(
+        f"/api/v1/decks/{deck_id}/publish/",
+        _payload(
+            description=(
+                '<p><strong>Texto</strong><img src="https://example.com/x.png" '
+                'onerror="alert(1)"><script>alert(1)</script></p>'
+            )
+        ),
+        format="json",
+    )
+
+    assert response.status_code == 201
+    description = Deck.objects.get(pk=deck_id).description
+    assert "<strong>Texto</strong>" in description
+    assert "onerror" not in description
+    assert "<script>" not in description
+
+
 def test_republish_is_rejected_and_keeps_web_content_authoritative(auth_client):
     deck_id = uuid.uuid4()
     url = f"/api/v1/decks/{deck_id}/publish/"

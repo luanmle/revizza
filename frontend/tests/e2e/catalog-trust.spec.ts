@@ -4,7 +4,8 @@ const DECK_ID = "11111111-1111-4111-8111-111111111111";
 const deck = {
   id: DECK_ID,
   name: "Direito Constitucional",
-  description: "Deck comunitário.",
+  description:
+    '<p><strong>Deck</strong> comunitário com <span style="font-size:32px">destaque</span>.</p>',
   subject_tags: ["Direito"],
   note_count: 120,
   subscriber_count: 45,
@@ -51,6 +52,11 @@ test("card mostra autoria, selo e atualização", async ({ page }) => {
 test("detalhe mostra criador e moderadores ativos", async ({ page }) => {
   await page.goto(`/decks/${DECK_ID}`);
 
+  const description = page.getByText("Deck comunitário com destaque.", {
+    exact: true,
+  });
+  await expect(description.locator("strong")).toHaveText("Deck");
+  await expect(description.locator("span")).toHaveCSS("font-size", "32px");
   await expect(page.getByText("Oficial")).toBeVisible();
   await expect(page.getByText("Ana Silva")).toBeVisible();
   await expect(page.getByText("Bruno Costa")).toBeVisible();

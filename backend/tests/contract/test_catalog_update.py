@@ -2,7 +2,7 @@
 
 import pytest
 
-from apps.catalog.models import Deck, DeckModerator
+from apps.catalog.models import DeckModerator
 
 pytestmark = pytest.mark.django_db
 
@@ -110,6 +110,24 @@ def test_description_sanitized(auth_client, user, make_deck):
     assert "<script>" not in description
     assert "onerror" not in description
     assert "Texto" in description
+
+
+def test_legacy_description_sanitized_when_read(auth_client, make_deck):
+    deck = make_deck(
+        name="Deck",
+        description=(
+            '<p><strong>Texto</strong><img src="https://example.com/x.png" '
+            'onerror="alert(1)"><script>alert(1)</script></p>'
+        ),
+    )
+
+    response = auth_client.get(f"/api/v1/decks/{deck.id}/")
+
+    assert response.status_code == 200
+    description = response.json()["description"]
+    assert "<strong>Texto</strong>" in description
+    assert "onerror" not in description
+    assert "<script>" not in description
 
 
 def test_non_moderator_forbidden(auth_client, user, make_deck):

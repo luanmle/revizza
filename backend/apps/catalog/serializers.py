@@ -10,6 +10,7 @@ from .services import deck_sync_state
 
 class DeckSerializer(serializers.ModelSerializer):
     creator = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
     last_updated_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
@@ -35,6 +36,9 @@ class DeckSerializer(serializers.ModelSerializer):
             "name": deck.creator.name,
             "avatar_url": avatars.public_url(deck.creator.avatar_path),
         }
+
+    def get_description(self, deck):
+        return sanitize_html(deck.description)
 
 
 class DeckDetailSerializer(DeckSerializer):
