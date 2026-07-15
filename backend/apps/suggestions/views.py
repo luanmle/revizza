@@ -18,6 +18,7 @@ from apps.catalog.models import Deck, Subscription
 from apps.discussions.models import Comment
 from apps.discussions.serializers import CommentSerializer
 from apps.notes.models import Note
+from apps.notifications.services import notify_new_suggestion
 from config.pagination import DefaultCursorPagination
 
 from .models import Suggestion, SuggestionTargetNote, SuggestionVote
@@ -143,6 +144,7 @@ def _create_change_suggestion(request, deck, notes, validated) -> Response:
         SuggestionTargetNote.objects.bulk_create(
             SuggestionTargetNote(suggestion=suggestion, note=note) for note in notes
         )
+        notify_new_suggestion(suggestion)
     return Response(
         ChangeSuggestionSerializer(suggestion).data, status=status.HTTP_201_CREATED
     )
@@ -238,6 +240,7 @@ class NewNoteSuggestionCreateView(APIView):
             author=request.user,
             **serializer.validated_data,
         )
+        notify_new_suggestion(suggestion)
         return Response(
             NewNoteSuggestionSerializer(suggestion, context={"deck": deck}).data,
             status=status.HTTP_201_CREATED,
@@ -268,6 +271,7 @@ class DeletionSuggestionCreateView(APIView):
                 **serializer.validated_data,
             )
             SuggestionTargetNote.objects.create(suggestion=suggestion, note=note)
+            notify_new_suggestion(suggestion)
         return Response(
             DeletionSuggestionSerializer(suggestion).data,
             status=status.HTTP_201_CREATED,

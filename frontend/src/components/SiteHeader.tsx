@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/ThemeToggle";
+import NotificationBell from "@/components/NotificationBell";
 
 /** Navegação global (MASTER.md §8): logo, catálogo, tema e menu autenticado/anônimo. */
 export default function SiteHeader() {
@@ -48,6 +49,7 @@ export default function SiteHeader() {
             Catálogo
           </Link>
           <ThemeToggle />
+          {authenticated && <NotificationBell />}
           {authenticated === false && (
             <>
               <Button

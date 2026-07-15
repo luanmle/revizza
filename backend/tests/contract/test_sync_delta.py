@@ -106,6 +106,28 @@ def test_delta_full_resync_when_one_type_of_multi_type_deck_changes(
     assert body["notes"] == []
 
 
+def test_notification_resolution_does_not_alter_sync_payload(
+    auth_client, subscribed_deck, note_type, user
+):
+    """Principle VIII: resolver sync_pending não altera o payload de sync."""
+    from apps.notifications.models import Notification
+
+    _make_note(subscribed_deck, note_type, "a", timezone.now())
+    Notification.objects.create(
+        recipient=user, deck=subscribed_deck, type=Notification.Type.SYNC_PENDING
+    )
+
+    with_pending = auth_client.get(_url(subscribed_deck)).json()
+
+    Notification.objects.create(
+        recipient=user, deck=subscribed_deck, type=Notification.Type.SYNC_PENDING
+    )
+    auth_client.credentials(HTTP_X_SYNC_RUN_ID="run-1")
+    without_pending = auth_client.get(_url(subscribed_deck)).json()
+
+    assert with_pending == without_pending
+
+
 def test_delta_is_rate_limited_to_one_per_10s(auth_client, subscribed_deck):
     assert auth_client.get(_url(subscribed_deck)).status_code == 200
 

@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "apps.notes",
     "apps.discussions",
     "apps.suggestions",
+    "apps.notifications",
     "apps.protection",
     "apps.sync",
 ]

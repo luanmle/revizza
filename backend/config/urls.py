@@ -14,4 +14,5 @@ urlpatterns = [
     path("api/v1/", include("apps.protection.urls")),
     path("api/v1/", include("apps.sync.urls")),
     path("api/v1/", include("apps.suggestions.urls")),
+    path("api/v1/", include("apps.notifications.urls")),
 ]

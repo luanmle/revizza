@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from apps.catalog.models import Deck, DeckModerator, Subscription
 from apps.notes.models import MediaFile, Note, NoteType
 from apps.notes.sanitize import sanitize_field_values
+from apps.notifications.models import Notification
 
 from . import media
 
@@ -134,7 +135,20 @@ class _SubscriberSyncView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
                 headers={"Retry-After": "10"},
             )
-        return self.sync(request, deck)
+        response = self.sync(request, deck)
+        if (
+            not status.is_client_error(response.status_code)
+            and response.data.get("full_resync_required") is not True
+        ):
+            # sync_pending resolve na sincronização bem-sucedida, exceto no redirect
+            # para full resync (o cliente ainda não recebeu o conteúdo) — FR-006
+            Notification.objects.filter(
+                recipient=request.user,
+                deck=deck,
+                type=Notification.Type.SYNC_PENDING,
+                resolved_at__isnull=True,
+            ).update(resolved_at=timezone.now())
+        return response
 
 
 class DeltaView(_SubscriberSyncView):

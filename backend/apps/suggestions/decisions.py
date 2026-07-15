@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.notes.models import Note
+from apps.notifications.services import notify_suggestion_decided
 
 from .models import Suggestion, SuggestionTargetNote
 from .permissions import is_active_deck_moderator
@@ -47,6 +48,7 @@ class SuggestionDecisionView(APIView):
             self.decide(request, suggestion)
             suggestion.decided_by = request.user
             suggestion.save()
+            notify_suggestion_decided(suggestion)
         return Response(SuggestionDetailSerializer(suggestion).data)
 
 
