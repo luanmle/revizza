@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
+  DownloadCloud,
   FilePlus2,
   FileText,
   ListChecks,
@@ -29,6 +31,7 @@ interface DeckDetail {
   moderator_count: number;
   is_moderator: boolean;
   is_subscribed: boolean;
+  sync_status: "not_synced_yet" | "up_to_date" | "out_of_date" | null;
 }
 
 export default function DeckDetailPage() {
@@ -174,6 +177,28 @@ export default function DeckDetailPage() {
           </span>
         </CardContent>
       </Card>
+
+      {deck.sync_status === "not_synced_yet" && (
+        <Alert className="mb-6">
+          <DownloadCloud aria-hidden />
+          <AlertTitle>Ainda não sincronizado</AlertTitle>
+          <AlertDescription>
+            Instale e configure o add-on do AnkiHub Brasil no seu Anki, entre com sua
+            conta e sincronize para trazer este deck para o seu computador.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {deck.sync_status === "out_of_date" && (
+        <Alert className="mb-6 border-warning/40 bg-warning/10">
+          <AlertTriangle aria-hidden className="text-warning" />
+          <AlertTitle>Desatualizado</AlertTitle>
+          <AlertDescription>
+            Este deck tem mudanças novas desde sua última sincronização. Sincronize pelo
+            add-on para trazê-las ao seu Anki.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {(subscribe.isError || unsubscribe.isError) && (
         <p role="alert" className="mb-4 text-sm text-destructive">

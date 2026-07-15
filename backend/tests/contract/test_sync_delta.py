@@ -170,6 +170,44 @@ def test_delta_rejects_invalid_since_mod(auth_client, subscribed_deck):
     assert response.status_code == 400
 
 
+def test_delta_sync_sets_last_synced_at(auth_client, subscribed_deck, note_type, user):
+    _make_note(subscribed_deck, note_type, "a", timezone.now())
+
+    assert auth_client.get(_url(subscribed_deck)).status_code == 200
+
+    sub = Subscription.objects.get(user=user, deck=subscribed_deck)
+    assert sub.last_synced_at is not None
+
+
+def test_structural_change_delta_does_not_set_last_synced_at(
+    auth_client, subscribed_deck, note_type, user
+):
+    _make_note(subscribed_deck, note_type, "a", timezone.now())
+    note_type.structure_changed_at = timezone.now()
+    note_type.save()
+
+    since = (timezone.now() - timedelta(days=1)).isoformat()
+    body = auth_client.get(_url(subscribed_deck), {"since_mod": since}).json()
+
+    assert body["full_resync_required"] is True
+    sub = Subscription.objects.get(user=user, deck=subscribed_deck)
+    assert sub.last_synced_at is None
+
+
+def test_last_synced_at_write_does_not_alter_sync_payload(
+    auth_client, subscribed_deck, note_type, user
+):
+    """Principle VIII: gravar last_synced_at não altera o payload de sync."""
+    _make_note(subscribed_deck, note_type, "a", timezone.now())
+
+    before = auth_client.get(_url(subscribed_deck)).json()
+
+    auth_client.credentials(HTTP_X_SYNC_RUN_ID="run-1")
+    after = auth_client.get(_url(subscribed_deck)).json()
+
+    assert before == after
+
+
 def test_delta_accepts_naive_since_mod_as_utc(auth_client, subscribed_deck, note_type):
     """FR-034: ISO 8601 sem timezone é tratado como UTC (T131)."""
     now = timezone.now()

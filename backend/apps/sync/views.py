@@ -140,6 +140,7 @@ class _SubscriberSyncView(APIView):
             not status.is_client_error(response.status_code)
             and response.data.get("full_resync_required") is not True
         ):
+            now = timezone.now()
             # sync_pending resolve na sincronização bem-sucedida, exceto no redirect
             # para full resync (o cliente ainda não recebeu o conteúdo) — FR-006
             Notification.objects.filter(
@@ -147,7 +148,12 @@ class _SubscriberSyncView(APIView):
                 deck=deck,
                 type=Notification.Type.SYNC_PENDING,
                 resolved_at__isnull=True,
-            ).update(resolved_at=timezone.now())
+            ).update(resolved_at=now)
+            # last_synced_at: incondicional, independente de existir sync_pending a
+            # resolver (data-model.md)
+            Subscription.objects.filter(user=request.user, deck=deck).update(
+                last_synced_at=now
+            )
         return response
 
 

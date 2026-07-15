@@ -60,6 +60,8 @@ class Subscription(BaseModel):
     sync_trigger_chained_native = models.BooleanField(default=False)
     # FR-037: apagar de fato vs. apenas marcar ao propagar remoção
     delete_notes_on_removal = models.BooleanField(default=False)
+    # None = nunca sincronizou este deck desde a inscrição (data-model.md)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [

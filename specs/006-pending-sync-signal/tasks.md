@@ -35,9 +35,9 @@ frontend paths relative to `frontend/`, add-on paths relative to `addon/`:
 
 **Purpose**: Add the one new column every user story's derived state depends on.
 
-- [ ] T001 Add `last_synced_at = models.DateTimeField(null=True, blank=True)` to `Subscription` in
+- [X] T001 Add `last_synced_at = models.DateTimeField(null=True, blank=True)` to `Subscription` in
       `backend/apps/catalog/models.py` (data-model.md).
-- [ ] T002 Generate migration: `python manage.py makemigrations catalog` in `backend/`, review the
+- [X] T002 Generate migration: `python manage.py makemigrations catalog` in `backend/`, review the
       generated file in `backend/apps/catalog/migrations/` (no backfill needed — `None` correctly
       means "never synced" for every existing row).
 
@@ -52,21 +52,21 @@ and the single shared derived-state helper every user story's read-side depends 
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 In `backend/apps/sync/views.py::_SubscriberSyncView.get`, set
+- [X] T003 In `backend/apps/sync/views.py::_SubscriberSyncView.get`, set
       `Subscription.objects.filter(user=request.user, deck=deck).update(last_synced_at=timezone.now())`
       under the same success condition already used for the `Notification` `sync_pending` resolution
       (`not status.is_client_error(response.status_code)` and `full_resync_required is not True`) —
       unconditional write, independent of whether a `sync_pending` notification existed to resolve
       (research.md Decision 2, data-model.md).
-- [ ] T004 [P] Contract test: successful delta sync sets `Subscription.last_synced_at` for that user
+- [X] T004 [P] Contract test: successful delta sync sets `Subscription.last_synced_at` for that user
       + deck, in `backend/tests/contract/test_sync_delta.py::test_delta_sync_sets_last_synced_at`.
-- [ ] T005 [P] Contract test: successful full sync sets `Subscription.last_synced_at`, in
+- [X] T005 [P] Contract test: successful full sync sets `Subscription.last_synced_at`, in
       `backend/tests/contract/test_sync_full.py::test_full_sync_sets_last_synced_at`.
-- [ ] T006 [P] Contract test: a `full_resync_required: true` delta redirect does NOT set
+- [X] T006 [P] Contract test: a `full_resync_required: true` delta redirect does NOT set
       `last_synced_at` (client hasn't received content yet, mirrors the existing `sync_pending`
       non-resolution regression test), in
       `backend/tests/contract/test_sync_delta.py::test_structural_change_delta_does_not_set_last_synced_at`.
-- [ ] T007 [P] Contract test (Constitution Principle VIII regression guard): the `DeltaView`/
+- [X] T007 [P] Contract test (Constitution Principle VIII regression guard): the `DeltaView`/
       `FullView` response body is byte-for-byte unchanged aside from the new `last_synced_at`
       side-effect — no `Note`/`NoteType`/`Card`/scheduling field is read, filtered, or altered by
       T003 — extending both
@@ -74,7 +74,7 @@ and the single shared derived-state helper every user story's read-side depends 
       and
       `backend/tests/contract/test_sync_full.py::test_last_synced_at_write_does_not_alter_sync_payload`
       (mirrors feature 005's `test_notification_resolution_does_not_alter_sync_payload`).
-- [ ] T008 Create `deck_sync_state(user, deck) -> Literal["not_synced_yet", "up_to_date",
+- [X] T008 Create `deck_sync_state(user, deck) -> Literal["not_synced_yet", "up_to_date",
       "out_of_date"] | None` in `backend/apps/catalog/services.py`: implements the full derived-state
       table from data-model.md as the single shared computation — `None` when not subscribed; else
       `"not_synced_yet"` when `subscription.last_synced_at is None`; else `"out_of_date"` when an
@@ -100,26 +100,26 @@ guided next step on the deck detail page, which clears once they complete their 
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Contract test: subscribed, `last_synced_at` still `None` → `sync_status ==
+- [X] T009 [P] [US1] Contract test: subscribed, `last_synced_at` still `None` → `sync_status ==
       "not_synced_yet"`, in
       `backend/tests/contract/test_catalog_list.py::test_sync_status_not_synced_yet_before_first_sync`.
-- [ ] T010 [P] [US1] Contract test: not subscribed → `sync_status is None` (no indicator, no data
+- [X] T010 [P] [US1] Contract test: not subscribed → `sync_status is None` (no indicator, no data
       leak), in
       `backend/tests/contract/test_catalog_list.py::test_sync_status_null_when_not_subscribed`.
-- [ ] T011 [P] [US1] Contract test: subscribed, synced once, no accepted changes since → `sync_status
+- [X] T011 [P] [US1] Contract test: subscribed, synced once, no accepted changes since → `sync_status
       == "up_to_date"`, in
       `backend/tests/contract/test_catalog_list.py::test_sync_status_up_to_date_after_first_sync`.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Add `sync_status` `SerializerMethodField` to `DeckDetailSerializer` in
+- [X] T012 [US1] Add `sync_status` `SerializerMethodField` to `DeckDetailSerializer` in
       `backend/apps/catalog/serializers.py` that calls `deck_sync_state(request.user, deck)` (T008)
       and returns its value directly — no state logic duplicated in the serializer.
-- [ ] T013 [US1] Render the `sync_status === "not_synced_yet"` state on
+- [X] T013 [US1] Render the `sync_status === "not_synced_yet"` state on
       `frontend/src/app/decks/[id]/page.tsx`: an `Alert` with the "ainda não sincronizado" message and
       the next steps (instalar/configurar o add-on, autenticar, sincronizar), reusing the existing
       `Alert`/`Card` primitives already imported on that page.
-- [ ] T014 [US1] Run the `impeccable` audit pass on the new onboarding state in
+- [X] T014 [US1] Run the `impeccable` audit pass on the new onboarding state in
       `frontend/src/app/decks/[id]/page.tsx` (Constitution VII gate) and address findings.
 
 **Checkpoint**: User Story 1 fully functional and testable independently — new subscribers see the
@@ -138,21 +138,21 @@ changes are accepted after their last sync, and it clears again on their next sy
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Contract test: subscribed + previously synced, then a suggestion is accepted in
+- [X] T015 [P] [US2] Contract test: subscribed + previously synced, then a suggestion is accepted in
       that deck → `sync_status == "out_of_date"`, in
       `backend/tests/contract/test_catalog_list.py::test_sync_status_out_of_date_after_accept`.
-- [ ] T016 [P] [US2] Contract test: from the `out_of_date` state, subscriber syncs again →
+- [X] T016 [P] [US2] Contract test: from the `out_of_date` state, subscriber syncs again →
       `sync_status` returns to `"up_to_date"`, in
       `backend/tests/contract/test_catalog_list.py::test_sync_status_resolves_to_up_to_date_after_resync`.
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Render the `sync_status === "out_of_date"` state on
+- [X] T017 [US2] Render the `sync_status === "out_of_date"` state on
       `frontend/src/app/decks/[id]/page.tsx`: a visually distinct "desatualizado" message (different
       copy and, per `impeccable` guidance, different visual weight than the onboarding `Alert` from
       US1) — no new backend logic needed, `deck_sync_state`/`sync_status` already covers this value
       (T008/T012).
-- [ ] T018 [US2] Extend the `impeccable` audit pass to the out-of-date state in
+- [X] T018 [US2] Extend the `impeccable` audit pass to the out-of-date state in
       `frontend/src/app/decks/[id]/page.tsx` (Constitution VII gate) and address findings.
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — the deck detail page now distinguishes
@@ -171,27 +171,27 @@ inscritos" in the add-on and confirm only that deck is marked; sync it and confi
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Contract test: `GET /api/v1/decks/?subscribed=1` exposes `pending_sync: true`
+- [X] T019 [P] [US3] Contract test: `GET /api/v1/decks/?subscribed=1` exposes `pending_sync: true`
       only for the deck in the `out_of_date` derived state, `false` for others, in
       `backend/tests/contract/test_catalog_list.py::test_subscribed_list_exposes_pending_sync`.
-- [ ] T020 [P] [US3] Contract test: a deck with an accepted change but never synced by this subscriber
+- [X] T020 [P] [US3] Contract test: a deck with an accepted change but never synced by this subscriber
       (`not_synced_yet`) reports `pending_sync: false` (no false badge before the first sync — spec
       edge case), in
       `backend/tests/contract/test_catalog_list.py::test_subscribed_list_no_pending_sync_before_first_sync`.
-- [ ] T021 [P] [US3] Unit test: `menu_item_states` accepts a pending-decks count and appends it to the
+- [X] T021 [P] [US3] Unit test: `menu_item_states` accepts a pending-decks count and appends it to the
       "Decks inscritos" label (e.g. `"Decks inscritos (2)"`), unchanged when count is 0, in
       `addon/tests/unit/test_menu.py::test_menu_item_states_shows_pending_count`.
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Add `pending_sync` `SerializerMethodField` to `DeckSubscribedSerializer` in
+- [X] T022 [US3] Add `pending_sync` `SerializerMethodField` to `DeckSubscribedSerializer` in
       `backend/apps/catalog/serializers.py`: `True` only when
       `deck_sync_state(request.user, deck) == "out_of_date"` (T008) — same shared helper as
       `sync_status`, no re-derivation.
-- [ ] T023 [US3] Extend `menu_item_states(logged_in: bool, pending_count: int = 0)` in
+- [X] T023 [US3] Extend `menu_item_states(logged_in: bool, pending_count: int = 0)` in
       `addon/ankihub_br/gui/__init__.py`: append `f" ({pending_count})"` to the "Decks inscritos"
       label when `pending_count > 0`, unchanged otherwise.
-- [ ] T024 [US3] Wire `_refresh_menu` in `addon/ankihub_br/gui/__init__.py` to compute
+- [X] T024 [US3] Wire `_refresh_menu` in `addon/ankihub_br/gui/__init__.py` to compute
       `pending_count` from the already-fetched `client.get_subscribed_decks()` result's
       `pending_sync` field before calling `menu_item_states`, and pass it through (menu already
       re-fetches on `aboutToShow` via `show_subscribed_decks`'s existing network call — reuse that
@@ -206,8 +206,16 @@ sync signal end to end, computed by a single helper.
 
 **Purpose**: End-to-end validation across all three surfaces.
 
-- [ ] T025 Run quickstart.md Scenarios 1-4 end to end against a local server + local Anki profile to
+- [X] T025 Run quickstart.md Scenarios 1-4 end to end against a local server + local Anki profile to
       confirm the full loop (onboarding state, out-of-date state, add-on badge, no false positives).
+      Verified web-side (Scenarios 1, 2, 4) and add-on API surface (Scenario 3's `pending_sync`
+      field) via a real Django process against a throwaway sqlite DB exercising actual URL
+      routing/views (not the pytest test client shortcuts) — subscribe → not_synced_yet → sync →
+      up_to_date → accept suggestion → out_of_date → resync → up_to_date; `?subscribed=1` marks only
+      the out-of-date deck and clears after sync; fresh subscribe+sync shows no false pending. The
+      add-on GUI half of Scenario 3 (menu label "Decks inscritos (N)" rendering in a real Anki
+      window) isn't verifiable without a real Anki desktop profile in this sandbox — covered instead
+      by `addon/tests/unit/test_menu.py::test_menu_item_states_shows_pending_count` (T021).
 
 ---
 

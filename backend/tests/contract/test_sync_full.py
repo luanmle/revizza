@@ -77,6 +77,35 @@ def test_full_requires_subscription(auth_client, make_deck):
     assert auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").status_code == 403
 
 
+def test_full_sync_sets_last_synced_at(auth_client, user, make_deck, note_type):
+    deck = make_deck(name="Deck Full")
+    Subscription.objects.create(user=user, deck=deck)
+
+    assert auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").status_code == 200
+
+    sub = Subscription.objects.get(user=user, deck=deck)
+    assert sub.last_synced_at is not None
+
+
+def test_last_synced_at_write_does_not_alter_sync_payload(
+    auth_client, user, make_deck, note_type
+):
+    """Principle VIII: gravar last_synced_at não altera o payload de sync."""
+    deck = make_deck(name="Deck Full")
+    Subscription.objects.create(user=user, deck=deck)
+    Note.objects.create(
+        deck=deck, note_type=note_type, guid="a",
+        field_values={"Frente": "Q", "Verso": "A"}, mod=timezone.now(),
+    )
+
+    before = auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").json()
+
+    auth_client.credentials(HTTP_X_SYNC_RUN_ID="run-1")
+    after = auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").json()
+
+    assert before == after
+
+
 def test_full_deck_name_decoupled_from_editable_name(auth_client, user, make_deck):
     """research.md Decisão 4 / FR-006: deck_name do payload vem de anki_deck_name,
     imune a edições futuras de Deck.name — provado antes mesmo do endpoint de edição existir."""

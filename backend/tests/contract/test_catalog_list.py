@@ -130,6 +130,112 @@ def test_filter_by_accented_tag_matches_literal_utf8_storage(auth_client, make_d
     assert [d["name"] for d in response.json()["results"]] == ["Licitações"]
 
 
+def test_sync_status_null_when_not_subscribed(auth_client, make_deck):
+    deck = make_deck(name="Não assinado")
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+
+    assert body["sync_status"] is None
+
+
+def test_sync_status_not_synced_yet_before_first_sync(auth_client, user, make_deck):
+    from apps.catalog.models import Subscription
+
+    deck = make_deck(name="Recém assinado")
+    Subscription.objects.create(user=user, deck=deck)
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+
+    assert body["sync_status"] == "not_synced_yet"
+
+
+def test_sync_status_up_to_date_after_first_sync(auth_client, user, make_deck):
+    from django.utils import timezone
+
+    from apps.catalog.models import Subscription
+
+    deck = make_deck(name="Sincronizado")
+    Subscription.objects.create(user=user, deck=deck, last_synced_at=timezone.now())
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+
+    assert body["sync_status"] == "up_to_date"
+
+
+def test_sync_status_out_of_date_after_accept(auth_client, user, make_deck):
+    from django.utils import timezone
+
+    from apps.catalog.models import Subscription
+    from apps.notifications.models import Notification
+
+    deck = make_deck(name="Desatualizado")
+    Subscription.objects.create(user=user, deck=deck, last_synced_at=timezone.now())
+    Notification.objects.create(
+        recipient=user, deck=deck, type=Notification.Type.SYNC_PENDING
+    )
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+
+    assert body["sync_status"] == "out_of_date"
+
+
+def test_sync_status_resolves_to_up_to_date_after_resync(
+    auth_client, user, make_deck, note_type
+):
+    from apps.catalog.models import Subscription
+    from apps.notifications.models import Notification
+
+    deck = make_deck(name="Ressincronizado")
+    Subscription.objects.create(user=user, deck=deck)
+    Notification.objects.create(
+        recipient=user, deck=deck, type=Notification.Type.SYNC_PENDING
+    )
+
+    assert auth_client.get(f"/api/v1/decks/{deck.id}/sync/full/").status_code == 200
+
+    body = auth_client.get(f"{URL}{deck.id}/").json()
+    assert body["sync_status"] == "up_to_date"
+
+
+def test_subscribed_list_exposes_pending_sync(auth_client, user, make_deck):
+    from django.utils import timezone
+
+    from apps.catalog.models import Subscription
+    from apps.notifications.models import Notification
+
+    pending = make_deck(name="Pendente")
+    up_to_date = make_deck(name="Em dia")
+    Subscription.objects.create(
+        user=user, deck=pending, last_synced_at=timezone.now()
+    )
+    Subscription.objects.create(
+        user=user, deck=up_to_date, last_synced_at=timezone.now()
+    )
+    Notification.objects.create(
+        recipient=user, deck=pending, type=Notification.Type.SYNC_PENDING
+    )
+
+    results = auth_client.get(URL, {"subscribed": 1}).json()["results"]
+
+    by_name = {d["name"]: d["pending_sync"] for d in results}
+    assert by_name == {"Pendente": True, "Em dia": False}
+
+
+def test_subscribed_list_no_pending_sync_before_first_sync(auth_client, user, make_deck):
+    from apps.catalog.models import Subscription
+    from apps.notifications.models import Notification
+
+    deck = make_deck(name="Nunca sincronizado")
+    Subscription.objects.create(user=user, deck=deck)
+    Notification.objects.create(
+        recipient=user, deck=deck, type=Notification.Type.SYNC_PENDING
+    )
+
+    results = auth_client.get(URL, {"subscribed": 1}).json()["results"]
+
+    assert results[0]["pending_sync"] is False
+
+
 def test_recommendation_matches_accented_profile_in_literal_storage(
     auth_client, user, make_deck
 ):

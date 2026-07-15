@@ -42,14 +42,20 @@ PREFERENCE_FIELDS = (
     ),
 )
 _revizza_menu = None
+_pending_sync_count = 0  # cache do último client.get_subscribed_decks() (T024)
 
 
-def menu_item_states(logged_in: bool) -> tuple[tuple[str, bool], ...]:
+def menu_item_states(
+    logged_in: bool, pending_count: int = 0
+) -> tuple[tuple[str, bool], ...]:
     """Estado puro dos cinco itens do menu (T155)."""
+    decks_label = "Decks inscritos"
+    if pending_count > 0:
+        decks_label += f" ({pending_count})"
     return (
         ("Sair" if logged_in else "Entrar", True),
         ("Sincronizar agora", logged_in),
-        ("Decks inscritos", logged_in),
+        (decks_label, logged_in),
         ("Criar deck Revizza", logged_in),
         ("Testar conexão", True),
     )
@@ -149,7 +155,8 @@ def _refresh_menu() -> None:
         show_publish,
         show_test_connection,
     )
-    for (label, enabled), callback in zip(menu_item_states(logged_in), callbacks):
+    states = menu_item_states(logged_in, pending_count=_pending_sync_count)
+    for (label, enabled), callback in zip(states, callbacks):
         action = _revizza_menu.addAction(label)
         action.setEnabled(enabled)
         qconnect(action.triggered, callback)
@@ -382,9 +389,11 @@ def show_subscribed_decks() -> None:
         return updated_config if refreshed else None, client.get_subscribed_decks()
 
     def decks_loaded(result):
+        global _pending_sync_count
         updated_config, decks = result
         if updated_config is not None:
             _write_config(updated_config)
+        _pending_sync_count = sum(1 for deck in decks if deck.get("pending_sync"))
         if not decks:
             showInfo("Você ainda não assina nenhum deck.")
             return

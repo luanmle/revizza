@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.notes.sanitize import sanitize_html
 
 from .models import Deck, DeckModerator, Subscription
+from .services import deck_sync_state
 
 
 class DeckSerializer(serializers.ModelSerializer):
@@ -25,6 +26,7 @@ class DeckDetailSerializer(DeckSerializer):
     is_moderator = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
     note_types = serializers.SerializerMethodField()
+    sync_status = serializers.SerializerMethodField()
 
     class Meta(DeckSerializer.Meta):
         fields = DeckSerializer.Meta.fields + [
@@ -32,6 +34,7 @@ class DeckDetailSerializer(DeckSerializer):
             "is_moderator",
             "is_subscribed",
             "note_types",
+            "sync_status",
         ]
 
     def get_moderator_count(self, deck):
@@ -46,6 +49,9 @@ class DeckDetailSerializer(DeckSerializer):
     def get_is_subscribed(self, deck):
         user = self.context["request"].user
         return deck.subscriptions.filter(user=user).exists()
+
+    def get_sync_status(self, deck):
+        return deck_sync_state(self.context["request"].user, deck)
 
     def get_note_types(self, deck):
         # tipos derivados das notas vivas do deck, com contagem por tipo, em uma única
@@ -97,14 +103,18 @@ class DeckSubscribedSerializer(DeckSerializer):
     """Listagem `?subscribed=1` consumida pelo add-on: inclui as prefs de sync."""
 
     subscription = serializers.SerializerMethodField()
+    pending_sync = serializers.SerializerMethodField()
 
     class Meta(DeckSerializer.Meta):
-        fields = DeckSerializer.Meta.fields + ["subscription"]
+        fields = DeckSerializer.Meta.fields + ["subscription", "pending_sync"]
 
     def get_subscription(self, deck):
         # ponytail: 1 query por deck; catálogo assinado é pequeno no MVP
         sub = deck.subscriptions.get(user=self.context["request"].user)
         return SubscriptionSerializer(sub).data
+
+    def get_pending_sync(self, deck):
+        return deck_sync_state(self.context["request"].user, deck) == "out_of_date"
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
