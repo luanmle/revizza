@@ -9,6 +9,9 @@ from .services import deck_sync_state
 
 
 class DeckSerializer(serializers.ModelSerializer):
+    creator = serializers.SerializerMethodField()
+    last_updated_at = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = Deck
         fields = [
@@ -19,7 +22,19 @@ class DeckSerializer(serializers.ModelSerializer):
             "note_count",
             "subscriber_count",
             "created_at",
+            "last_updated_at",
+            "is_official",
+            "creator",
         ]
+
+    def get_creator(self, deck):
+        if not deck.creator:
+            return None
+        return {
+            "id": str(deck.creator_id),
+            "name": deck.creator.name,
+            "avatar_url": avatars.public_url(deck.creator.avatar_path),
+        }
 
 
 class DeckDetailSerializer(DeckSerializer):
@@ -28,6 +43,7 @@ class DeckDetailSerializer(DeckSerializer):
     is_subscribed = serializers.SerializerMethodField()
     note_types = serializers.SerializerMethodField()
     sync_status = serializers.SerializerMethodField()
+    moderators = serializers.SerializerMethodField()
 
     class Meta(DeckSerializer.Meta):
         fields = DeckSerializer.Meta.fields + [
@@ -36,6 +52,7 @@ class DeckDetailSerializer(DeckSerializer):
             "is_subscribed",
             "note_types",
             "sync_status",
+            "moderators",
         ]
 
     def get_moderator_count(self, deck):
@@ -53,6 +70,19 @@ class DeckDetailSerializer(DeckSerializer):
 
     def get_sync_status(self, deck):
         return deck_sync_state(self.context["request"].user, deck)
+
+    def get_moderators(self, deck):
+        return [
+            {
+                "id": str(moderator.id),
+                "user_id": str(moderator.user_id),
+                "name": moderator.user.name,
+                "avatar_url": avatars.public_url(moderator.user.avatar_path),
+            }
+            for moderator in deck.moderators.filter(
+                status=DeckModerator.Status.ACTIVE
+            ).select_related("user")
+        ]
 
     def get_note_types(self, deck):
         # tipos derivados das notas vivas do deck, com contagem por tipo, em uma única
@@ -139,7 +169,15 @@ class DeckModeratorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeckModerator
-        fields = ["id", "user_id", "email", "name", "avatar_url", "status", "created_at"]
+        fields = [
+            "id",
+            "user_id",
+            "email",
+            "name",
+            "avatar_url",
+            "status",
+            "created_at",
+        ]
         read_only_fields = fields
 
     def get_avatar_url(self, moderator):

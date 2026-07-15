@@ -4,6 +4,13 @@ from apps.base import BaseModel
 
 
 class Deck(BaseModel):
+    creator = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_decks",
+    )
     name = models.CharField(max_length=200)
     anki_deck_name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -12,6 +19,7 @@ class Deck(BaseModel):
     # NoteType.objects.filter(notes__deck=deck).distinct() (research.md Decisão 1)
     note_count = models.PositiveIntegerField(default=0)  # denormalizado
     subscriber_count = models.PositiveIntegerField(default=0)  # denormalizado
+    is_official = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return self.name

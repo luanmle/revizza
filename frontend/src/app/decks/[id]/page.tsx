@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BadgeCheck,
+  Clock3,
   DownloadCloud,
   FilePlus2,
   FileText,
@@ -15,11 +17,23 @@ import {
   Users,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { UserAvatar } from "@/components/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError } from "@/lib/api-client";
+import { formatRelativeDate } from "@/lib/format-relative-date";
+
+interface UserSummary {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+interface ModeratorSummary extends UserSummary {
+  user_id: string;
+}
 
 interface DeckDetail {
   id: string;
@@ -28,6 +42,10 @@ interface DeckDetail {
   subject_tags: string[];
   note_count: number;
   subscriber_count: number;
+  creator: UserSummary | null;
+  moderators: ModeratorSummary[];
+  is_official: boolean;
+  last_updated_at: string;
   moderator_count: number;
   is_moderator: boolean;
   is_subscribed: boolean;
@@ -115,13 +133,37 @@ export default function DeckDetailPage() {
       </nav>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{deck.name}</h1>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="break-words text-2xl font-semibold tracking-tight">
+              {deck.name}
+            </h1>
+            {deck.is_official && (
+              <Badge>
+                <BadgeCheck aria-hidden /> Oficial
+              </Badge>
+            )}
+          </div>
           {deck.description && (
             <p className="mt-2 max-w-[70ch] text-muted-foreground">
               {deck.description}
             </p>
           )}
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm text-muted-foreground">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <UserAvatar
+                avatarUrl={deck.creator?.avatar_url}
+                name={deck.creator?.name}
+              />
+              <span className="truncate">
+                Criado por {deck.creator?.name || "autoria indisponível"}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Clock3 aria-hidden className="size-4" /> Atualizado{" "}
+              {formatRelativeDate(deck.last_updated_at)}
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {deck.is_moderator && (
@@ -144,7 +186,11 @@ export default function DeckDetailPage() {
               {unsubscribe.isPending ? "Cancelando…" : "Cancelar inscrição"}
             </Button>
           ) : (
-            <Button size="lg" onClick={() => subscribe.mutate()} disabled={busy}>
+            <Button
+              size="lg"
+              onClick={() => subscribe.mutate()}
+              disabled={busy}
+            >
               {subscribe.isPending ? "Inscrevendo…" : "Inscrever-se"}
             </Button>
           )}
@@ -160,21 +206,44 @@ export default function DeckDetailPage() {
       </div>
 
       <Card className="mb-6">
-        <CardContent className="flex flex-wrap gap-x-6 gap-y-3 pt-1 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-2">
-            <FileText aria-hidden />
-            {deck.note_count} {deck.note_count === 1 ? "nota" : "notas"}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <Users aria-hidden />
-            {deck.subscriber_count}{" "}
-            {deck.subscriber_count === 1 ? "assinante" : "assinantes"}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <ShieldCheck aria-hidden />
-            {deck.moderator_count}{" "}
-            {deck.moderator_count === 1 ? "moderador" : "moderadores"}
-          </span>
+        <CardContent className="flex flex-col gap-4 pt-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            <span className="inline-flex items-center gap-2">
+              <FileText aria-hidden />
+              {deck.note_count} {deck.note_count === 1 ? "nota" : "notas"}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Users aria-hidden />
+              {deck.subscriber_count}{" "}
+              {deck.subscriber_count === 1 ? "assinante" : "assinantes"}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck aria-hidden />
+              {deck.moderator_count}{" "}
+              {deck.moderator_count === 1 ? "moderador" : "moderadores"}
+            </span>
+          </div>
+          {deck.moderators.length > 0 && (
+            <div>
+              <p className="mb-2 font-medium text-foreground">
+                Moderadores ativos
+              </p>
+              <ul className="flex flex-wrap gap-x-4 gap-y-2">
+                {deck.moderators.map((moderator) => (
+                  <li
+                    key={moderator.user_id}
+                    className="flex items-center gap-2"
+                  >
+                    <UserAvatar
+                      avatarUrl={moderator.avatar_url}
+                      name={moderator.name}
+                    />
+                    <span>{moderator.name || "Nome indisponível"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -183,8 +252,9 @@ export default function DeckDetailPage() {
           <DownloadCloud aria-hidden />
           <AlertTitle>Ainda não sincronizado</AlertTitle>
           <AlertDescription>
-            Instale e configure o add-on do AnkiHub Brasil no seu Anki, entre com sua
-            conta e sincronize para trazer este deck para o seu computador.
+            Instale e configure o add-on do AnkiHub Brasil no seu Anki, entre
+            com sua conta e sincronize para trazer este deck para o seu
+            computador.
           </AlertDescription>
         </Alert>
       )}
@@ -194,8 +264,8 @@ export default function DeckDetailPage() {
           <AlertTriangle aria-hidden className="text-warning" />
           <AlertTitle>Desatualizado</AlertTitle>
           <AlertDescription>
-            Este deck tem mudanças novas desde sua última sincronização. Sincronize pelo
-            add-on para trazê-las ao seu Anki.
+            Este deck tem mudanças novas desde sua última sincronização.
+            Sincronize pelo add-on para trazê-las ao seu Anki.
           </AlertDescription>
         </Alert>
       )}

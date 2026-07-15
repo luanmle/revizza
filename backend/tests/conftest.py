@@ -44,6 +44,8 @@ def make_deck(note_type):
         kwargs.setdefault("name", "Deck Teste")
         kwargs.setdefault("anki_deck_name", kwargs["name"])
         kwargs.setdefault("subject_tags", [])
+        kwargs.setdefault("creator", None)
+        kwargs.setdefault("is_official", False)
         return Deck.objects.create(**kwargs)
 
     return _make

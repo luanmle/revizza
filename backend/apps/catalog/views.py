@@ -1,8 +1,10 @@
 from django.db import transaction
-from django.db.models import Case, F, IntegerField, Q, TextField, Value, When
-from django.db.models.functions import Cast
+from django.db.models import Case, F, IntegerField, Max, Q, TextField, Value, When
+from django.db.models.functions import Cast, Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.exceptions import NotAuthenticated, ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -22,14 +24,34 @@ from .serializers import (
     SubscriptionSerializer,
 )
 
+CATALOG_SORTS = {
+    "recommended": ("-recommended", "-subscriber_count", "-created_at", "-id"),
+    "popular": ("-subscriber_count", "-created_at", "-id"),
+    "updated": ("-last_updated_at", "-created_at", "-id"),
+    "notes": ("-note_count", "-created_at", "-id"),
+    "recent": ("-created_at", "-id"),
+}
+
+
+def catalog_queryset():
+    return Deck.objects.select_related("creator").annotate(
+        last_updated_at=Coalesce(
+            Max("notes__mod"),
+            F("created_at"),
+        )
+    )
+
 
 class CatalogPagination(DefaultCursorPagination):
-    # FR-008: recomendados no topo, depois mais assinantes/mais recentes
-    ordering = ("-recommended", "-subscriber_count", "-created_at")
+    ordering = CATALOG_SORTS["recommended"]
+
+    def get_ordering(self, request, queryset, view):
+        return CATALOG_SORTS[request.query_params.get("sort", "recommended")]
 
 
 class DeckListView(generics.ListAPIView):
     pagination_class = CatalogPagination
+    permission_classes = [AllowAny]
 
     def get_serializer_class(self):
         if self.request.query_params.get("subscribed"):
@@ -37,13 +59,28 @@ class DeckListView(generics.ListAPIView):
         return DeckSerializer
 
     def get_queryset(self):
+        subscribed = bool(self.request.query_params.get("subscribed"))
+        moderated = bool(self.request.query_params.get("moderated"))
+        if subscribed and moderated:
+            raise ValidationError({"subscribed": "Não combine subscribed e moderated."})
+        if (subscribed or moderated) and not self.request.user.is_authenticated:
+            raise NotAuthenticated()
+        sort = self.request.query_params.get("sort", "recommended")
+        if sort not in CATALOG_SORTS:
+            raise ValidationError({"sort": "Ordenação inválida."})
+
         # ponytail: match textual no JSON das tags — funciona em sqlite e postgres;
         # trocar por jsonb containment se o catálogo crescer além do baseline do MVP
-        qs = Deck.objects.annotate(tags_text=Cast("subject_tags", TextField()))
+        qs = catalog_queryset().annotate(tags_text=Cast("subject_tags", TextField()))
 
-        if self.request.query_params.get("subscribed"):
+        if subscribed:
             # consumido pelo add-on para saber o que sincronizar (FR-031)
             qs = qs.filter(subscriptions__user=self.request.user)
+        elif moderated:
+            qs = qs.filter(
+                moderators__user=self.request.user,
+                moderators__status=DeckModerator.Status.ACTIVE,
+            )
 
         tag = self.request.query_params.get("tag")
         if tag:
@@ -54,7 +91,10 @@ class DeckListView(generics.ListAPIView):
 
         user = self.request.user
         match = Q()
-        for needle in filter(None, [user.target_career, user.target_board]):
+        for needle in filter(
+            None,
+            [getattr(user, "target_career", None), getattr(user, "target_board", None)],
+        ):
             for form in json_text_forms(needle):
                 match |= Q(tags_text__icontains=form)
         if match:
@@ -69,7 +109,7 @@ class DeckListView(generics.ListAPIView):
 
 
 class DeckDetailView(generics.RetrieveAPIView):
-    queryset = Deck.objects.all()
+    queryset = catalog_queryset()
     serializer_class = DeckDetailSerializer
 
     def patch(self, request, *args, **kwargs):

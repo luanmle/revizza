@@ -68,7 +68,7 @@ def test_detail_exposes_only_non_sensitive_moderator_state(
     assert response.status_code == 200
     body = response.json()
     assert body["name"] == "Com moderador"
-    assert "moderators" not in body
+    assert body["moderators"][0]["user_id"] == str(user.id)
     assert user.email not in str(body)
     assert body["moderator_count"] == 1
     assert body["is_moderator"] is True
@@ -96,8 +96,8 @@ def test_detail_exposes_note_types_with_per_type_count(auth_client, make_note):
     assert counts == {"A": 1, "B": 2, "C": 3}  # FR-011: composição por tipo
 
 
-def test_list_requires_authentication(api_client):
-    assert api_client.get(URL).status_code == 401
+def test_list_allows_anonymous_catalog(api_client):
+    assert api_client.get(URL).status_code == 200
 
 
 def _store_raw_json_tags(deck, raw: str):

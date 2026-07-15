@@ -310,6 +310,7 @@ class PublishView(APIView):
             ]
             deck = Deck.objects.create(
                 id=deck_id,
+                creator=request.user,
                 name=data["name"],
                 anki_deck_name=data["name"],
                 description=data.get("description", ""),

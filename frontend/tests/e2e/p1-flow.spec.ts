@@ -69,6 +69,9 @@ async function mockApi(page: Page): Promise<MockState> {
             subject_tags: ["Direito"],
             note_count: 1,
             subscriber_count: state.subscribed ? 1 : 0,
+            creator: null,
+            is_official: false,
+            last_updated_at: "2026-07-13T12:00:00Z",
           },
         ],
       });
@@ -81,6 +84,10 @@ async function mockApi(page: Page): Promise<MockState> {
         note_count: 1,
         subscriber_count: state.subscribed ? 1 : 0,
         moderator_count: 1,
+        moderators: [],
+        creator: null,
+        is_official: false,
+        last_updated_at: "2026-07-13T12:00:00Z",
         is_moderator: state.moderator,
         is_subscribed: state.subscribed,
         note_types: [
