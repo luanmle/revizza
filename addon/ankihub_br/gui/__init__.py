@@ -61,6 +61,29 @@ def menu_item_states(
     )
 
 
+def sync_failure_message(exc: Exception) -> str:
+    """Mensagem de erro de `sync_all` (bug: invalid-refresh-token).
+
+    `auth.AuthError` é levantado por `ensure_access_token` antes de qualquer
+    escrita na coleção — nenhum backup foi criado/restaurado, então a sessão
+    expirada/revogada exige novo login, não uma nova tentativa de sync.
+    """
+    if isinstance(exc, auth.AuthError):
+        return f"Sessão do Revizza expirada. Faça login novamente. Detalhe: {exc}"
+    return (
+        "A sincronização falhou e a coleção foi restaurada do backup. "
+        f"Tente novamente. Detalhe: {exc}"
+    )
+
+
+def deck_group_title(deck: dict) -> str:
+    """Título do QGroupBox de um deck em 'Decks inscritos' (T026 — marca pendência)."""
+    title = deck["name"]
+    if deck.get("pending_sync"):
+        title += " ⚠ pendente"
+    return title
+
+
 def connection_status_message(result: dict[str, bool | None]) -> str:
     lines = ["API ok" if result["api_ok"] else "API indisponível"]
     if result["session_ok"] is not None:
@@ -455,7 +478,7 @@ def _open_subscribed_decks_dialog(decks: list[dict]) -> None:
         button.setEnabled(False)
 
     for deck in decks:
-        group = QGroupBox(deck["name"])
+        group = QGroupBox(deck_group_title(deck))
         group_layout = QVBoxLayout(group)
         preferences = deck.get("subscription", {})
         controls = {}
@@ -606,10 +629,10 @@ def sync_all(trigger: str) -> None:
         synced = len(sync.sync_decks(mw.col, client, deck_options))
     except Exception as exc:
         report_exception(exc)
-        showWarning(
-            "A sincronização falhou e a coleção foi restaurada do backup. "
-            f"Tente novamente. Detalhe: {exc}"
-        )
+        if isinstance(exc, auth.AuthError):
+            auth.sign_out(config)
+            _write_config(config)
+        showWarning(sync_failure_message(exc))
         return
     finally:
         sync.mark_sync_finished()

@@ -219,6 +219,20 @@ sync signal end to end, computed by a single helper.
 
 ---
 
+## Phase 7: Convergence
+
+- [X] T026 Add a per-deck pending-sync marker inside `_open_subscribed_decks_dialog`'s deck list in
+      `addon/ankihub_br/gui/__init__.py` (e.g. prefix/suffix the `QGroupBox(deck["name"])` title when
+      `deck.get("pending_sync")` is true), so the "Decks inscritos" screen identifies which specific
+      subscribed deck(s) are pending, not just an aggregate count on the menu label — the current
+      implementation only exposes the count via `menu_item_states`/`_refresh_menu` (T023/T024), which
+      doesn't tell the user which of N decks it refers to per US3/AC1, FR-005, SC-002 (partial).
+      Implemented as a pure `deck_group_title(deck)` helper (mirrors `menu_item_states`'s
+      Qt-wiring/pure-logic split) appending " ⚠ pendente" to the group title when `pending_sync` is
+      true; unit-tested in `addon/tests/unit/test_menu.py::test_deck_group_title_marks_pending_sync`.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
