@@ -19,6 +19,11 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # T129: origens do frontend obrigatórias e explícitas em produção
 CORS_ALLOWED_ORIGINS = os.environ["DJANGO_CORS_ALLOWED_ORIGINS"].split(",")
+
+# Redirects do add-on (/go/note/...) devem apontar pro app web, não pro localhost
+# default do base.py. Reusa a origem CORS já configurada — é a mesma URL do
+# frontend (docs/deploy.md) — então nenhuma config var nova no dyno.
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL") or CORS_ALLOWED_ORIGINS[0]
 PASSWORD_RESET_REDIRECT_URL = os.environ["PASSWORD_RESET_REDIRECT_URL"]
 
 # Supavisor em transaction mode (porta 6543) não suporta cursores server-side;

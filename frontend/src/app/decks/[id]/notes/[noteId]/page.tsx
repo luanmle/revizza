@@ -103,15 +103,20 @@ export default function NotePage() {
           )}
 
           <div className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href={`/decks/${id}/notes/${noteId}/suggest`}>
-                Sugerir mudança
-              </Link>
+            <Button
+              nativeButton={false}
+              render={<Link href={`/decks/${id}/notes/${noteId}/suggest`} />}
+            >
+              Sugerir mudança
             </Button>
-            <Button asChild variant="outline">
-              <Link href={`/decks/${id}/suggestions?note_id=${noteId}`}>
-                Ver histórico
-              </Link>
+            <Button
+              nativeButton={false}
+              variant="outline"
+              render={
+                <Link href={`/decks/${id}/suggestions?note_id=${noteId}`} />
+              }
+            >
+              Ver histórico
             </Button>
           </div>
         </div>
