@@ -74,14 +74,29 @@ class MeView(APIView):
                 detail = exc.detail if isinstance(exc.detail, list) else [exc.detail]
                 return Response({"avatar": detail}, status=status.HTTP_400_BAD_REQUEST)
             old_path = request.user.avatar_path
-            new_path = avatars.upload(request.user.id, content, ext)
+            try:
+                new_path = avatars.upload(request.user.id, content, ext)
+            except Exception:  # bucket ausente, Storage fora do ar etc.
+                return Response(
+                    {"avatar": ["Não foi possível salvar a imagem, tente novamente."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             request.user.avatar_path = new_path
             request.user.save(update_fields=["avatar_path", "updated_at"])
             if old_path and old_path != new_path:
-                avatars.delete(old_path)
+                try:
+                    avatars.delete(old_path)
+                except Exception:
+                    pass  # novo avatar já persistido; objeto antigo órfão não é erro do usuário
         elif "avatar" in request.data and request.data.get("avatar") is None:
             if request.user.avatar_path:
-                avatars.delete(request.user.avatar_path)
+                try:
+                    avatars.delete(request.user.avatar_path)
+                except Exception:
+                    return Response(
+                        {"avatar": ["Não foi possível remover a imagem, tente novamente."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 request.user.avatar_path = None
                 request.user.save(update_fields=["avatar_path", "updated_at"])
 

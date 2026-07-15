@@ -98,6 +98,50 @@ def test_patch_me_uploads_valid_avatar(auth_client, user, fake_avatar_storage):
     assert fetched.json()["avatar_url"] == response.json()["avatar_url"]
 
 
+def test_patch_me_returns_clean_error_when_storage_upload_fails(
+    auth_client, user, monkeypatch
+):
+    """Storage indisponível/bucket ausente não deve virar 500 (bug avatar-upload-fails)."""
+
+    def boom(user_id, content, ext):
+        raise RuntimeError("bucket not found")
+
+    monkeypatch.setattr("apps.accounts.views.avatars.upload", boom)
+    upload = SimpleUploadedFile(
+        "avatar.jpg", _image_bytes("JPEG"), content_type="image/jpeg"
+    )
+
+    response = auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+
+    assert response.status_code == 400
+    assert response.json()["avatar"]
+    user.refresh_from_db()
+    assert user.avatar_path is None
+
+
+def test_patch_me_returns_clean_error_when_storage_delete_fails(
+    auth_client, user, fake_avatar_storage, monkeypatch
+):
+    upload = SimpleUploadedFile(
+        "avatar.jpg", _image_bytes("JPEG"), content_type="image/jpeg"
+    )
+    auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+    user.refresh_from_db()
+    existing_path = user.avatar_path
+
+    def boom(path):
+        raise RuntimeError("storage unreachable")
+
+    monkeypatch.setattr("apps.accounts.views.avatars.delete", boom)
+
+    response = auth_client.patch(ME_URL, {"avatar": None}, format="json")
+
+    assert response.status_code == 400
+    assert response.json()["avatar"]
+    user.refresh_from_db()
+    assert user.avatar_path == existing_path  # inalterado (FR-003)
+
+
 def test_patch_me_rejects_non_image_upload(auth_client, user, fake_avatar_storage):
     upload = SimpleUploadedFile(
         "avatar.jpg", b"not an image", content_type="image/jpeg"
