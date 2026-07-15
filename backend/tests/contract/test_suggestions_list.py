@@ -122,16 +122,17 @@ def test_filter_by_submission_individual_vs_bulk(
     assert _ids(r_bulk) == {str(bulk.id)}
 
 
-def test_list_requires_subscription(auth_client, make_deck):
+def test_list_is_public_read(auth_client, make_deck):
+    # US3/contract §4: leitura pública — não-assinante lê (deep-link "Ver histórico")
     response = auth_client.get(_url(make_deck()))
 
-    assert response.status_code == 403
+    assert response.status_code == 200
 
 
-def test_list_requires_authentication(api_client, make_deck):
+def test_list_public_for_anonymous(api_client, make_deck):
     response = api_client.get(_url(make_deck()))
 
-    assert response.status_code == 401
+    assert response.status_code == 200
 
 
 # --- Detalhe (FR-020) ---

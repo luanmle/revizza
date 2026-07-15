@@ -155,12 +155,13 @@ def test_detail_returns_fields_and_note_type_for_preview(auth_client, deck, make
     assert "css" in body["note_type"]
 
 
-def test_detail_requires_subscription(auth_client, make_note):
+def test_detail_is_public_read(api_client, make_note):
+    """US1: a página da nota abre a partir do add-on sem login (AllowAny read-only)."""
     note = make_note()
 
-    response = auth_client.get(f"/api/v1/notes/{note.id}/")
+    response = api_client.get(f"/api/v1/notes/{note.id}/")
 
-    assert response.status_code == 403
+    assert response.status_code == 200
 
 
 def test_detail_unknown_note_returns_404(auth_client, deck):

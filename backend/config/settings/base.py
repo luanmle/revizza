@@ -106,6 +106,11 @@ CORS_ALLOWED_ORIGINS = [
     if origin
 ]
 
+# Base do frontend para os redirects /go/note/... (sem barra final).
+FRONTEND_BASE_URL = os.environ.get(
+    "FRONTEND_BASE_URL", "http://localhost:3000"
+).rstrip("/")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Supabase ---

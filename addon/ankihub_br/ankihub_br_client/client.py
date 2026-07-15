@@ -102,6 +102,29 @@ class AnkiHubBrClient:
     def get_deck_protection(self, deck_id: str) -> dict:
         return self.get(f"/decks/{deck_id}/protection/me/").json()
 
+    def resolve_note(self, guid: str) -> dict:
+        """GUID → {note_id, deck_id, web_url, history_url} (US2, auth)."""
+        return self.get("/notes/resolve/", params={"guid": guid}).json()
+
+    def submit_change_suggestion(
+        self,
+        note_id: str,
+        fields: dict,
+        tags: list[str],
+        category: str,
+        justification: str,
+    ) -> dict:
+        """Envia sugestão de mudança pelo pipeline existente (US2)."""
+        return self.post(
+            f"/notes/{note_id}/suggestions/change/",
+            json={
+                "change_category": category,
+                "justification": justification,
+                "proposed_field_values": fields,
+                "tags": tags,
+            },
+        ).json()
+
     def get_media_url(self, content_hash: str) -> str:
         return self.get(f"/media/{content_hash}/").json()["url"]
 
