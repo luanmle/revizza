@@ -66,7 +66,11 @@ const sorts: { value: CatalogSort; label: string }[] = [
 
 function CatalogSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2" aria-label="Carregando decks">
+    <div
+      role="status"
+      className="grid gap-4 sm:grid-cols-2"
+      aria-label="Carregando decks"
+    >
       {[0, 1, 2, 3].map((item) => (
         <Skeleton key={item} className="h-52 w-full" />
       ))}

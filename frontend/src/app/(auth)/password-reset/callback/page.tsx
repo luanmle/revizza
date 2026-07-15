@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,9 +71,12 @@ export default function PasswordResetCallbackPage() {
     <main className="mx-auto w-full max-w-md p-4 py-10 md:p-6 md:py-16">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <h1
+            data-slot="card-title"
+            className="font-heading text-2xl leading-snug font-semibold tracking-tight"
+          >
             Criar nova senha
-          </CardTitle>
+          </h1>
           <CardDescription>
             Escolha uma senha diferente da anterior para proteger sua conta.
           </CardDescription>
@@ -82,6 +84,7 @@ export default function PasswordResetCallbackPage() {
         <CardContent aria-live="polite">
           {status === "checking" && (
             <div
+              role="status"
               className="grid gap-3"
               aria-label="Validando link de recuperação"
             >

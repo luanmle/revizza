@@ -12,7 +12,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,9 +43,12 @@ export default function LoginPage() {
     <main className="mx-auto w-full max-w-md p-4 py-10 md:p-6 md:py-16">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <h1
+            data-slot="card-title"
+            className="font-heading text-2xl leading-snug font-semibold tracking-tight"
+          >
             Entrar
-          </CardTitle>
+          </h1>
           <CardDescription>
             Acesse seus decks, notas e sugestões da comunidade.
           </CardDescription>

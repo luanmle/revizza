@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -88,9 +87,12 @@ export default function RegisterPage() {
     <main className="mx-auto w-full max-w-md p-4 py-10 md:p-6 md:py-16">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <h1
+            data-slot="card-title"
+            className="font-heading text-2xl leading-snug font-semibold tracking-tight"
+          >
             Criar conta
-          </CardTitle>
+          </h1>
           <CardDescription>
             Comece a estudar e colaborar com decks da comunidade.
           </CardDescription>
@@ -184,12 +186,24 @@ export default function RegisterPage() {
               <legend className="px-1 text-sm font-semibold">
                 Privacidade (LGPD)
               </legend>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm">
-                <Checkbox name="consent_marketing_emails" />
+              <label
+                htmlFor="register-marketing-consent"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm"
+              >
+                <Checkbox
+                  id="register-marketing-consent"
+                  name="consent_marketing_emails"
+                />
                 Aceito receber e-mails de novidades
               </label>
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm">
-                <Checkbox name="consent_research_data" />
+              <label
+                htmlFor="register-research-consent"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm"
+              >
+                <Checkbox
+                  id="register-research-consent"
+                  name="consent_research_data"
+                />
                 Autorizo o uso de dados anonimizados em pesquisa
               </label>
               <p className="text-xs text-muted-foreground">

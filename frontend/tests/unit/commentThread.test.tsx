@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, expect, test, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import CommentThread from "@/components/CommentThread";
 
 const api = vi.hoisted(() => ({
@@ -23,6 +29,8 @@ beforeEach(() => {
   );
   api.post.mockResolvedValue({ id: "comment-1" });
 });
+
+afterEach(cleanup);
 
 test("mostra estado vazio e publica comentário na thread da nota", async () => {
   const client = new QueryClient({
@@ -81,4 +89,33 @@ test("exibe o nome do autor em vez do prefixo do UUID", async () => {
 
   expect(await screen.findByText("Ana Souza")).toBeDefined();
   expect(screen.queryByText(/Usuário user-2/)).toBeNull();
+});
+
+test("mostra loading ao tentar carregar comentários novamente", async () => {
+  let attempts = 0;
+  let finishRetry!: (value: unknown) => void;
+  const retry = new Promise((resolve) => {
+    finishRetry = resolve;
+  });
+  api.get.mockImplementation((path: string) => {
+    if (path === "/accounts/me/") return Promise.resolve({ id: "user-1" });
+    attempts += 1;
+    return attempts === 1 ? Promise.reject(new Error("offline")) : retry;
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  render(
+    <QueryClientProvider client={client}>
+      <CommentThread noteId="note-1" />
+    </QueryClientProvider>,
+  );
+
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Tentar novamente" }),
+  );
+
+  expect(await screen.findByLabelText("Carregando comentários")).toBeDefined();
+  finishRetry({ next: null, previous: null, results: [] });
 });
