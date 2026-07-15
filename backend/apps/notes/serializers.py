@@ -1,6 +1,25 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import Note, NoteType
+
+
+class NoteResolveSerializer(serializers.Serializer):
+    """GUID → ids + URLs web, para o botão "Sugerir mudança" do add-on (US2)."""
+
+    note_id = serializers.UUIDField(source="id")
+    deck_id = serializers.UUIDField()
+    web_url = serializers.SerializerMethodField()
+    history_url = serializers.SerializerMethodField()
+
+    def get_web_url(self, note):
+        return f"{settings.FRONTEND_BASE_URL}/decks/{note.deck_id}/notes/{note.id}"
+
+    def get_history_url(self, note):
+        return (
+            f"{settings.FRONTEND_BASE_URL}/decks/{note.deck_id}"
+            f"/suggestions?note_id={note.id}"
+        )
 
 
 class NoteListSerializer(serializers.ModelSerializer):

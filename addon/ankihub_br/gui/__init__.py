@@ -121,10 +121,14 @@ def _show_operation_error(prefix: str, exc: Exception) -> None:
 def setup() -> None:
     from aqt import gui_hooks, mw
 
+    from . import editor, reviewer
+
     gui_hooks.profile_did_open.append(_on_profile_open)
     gui_hooks.profile_will_close.append(_on_profile_close)
     _add_menu(mw)
     _wrap_native_sync()
+    reviewer.setup()
+    editor.setup()
 
 
 def _config() -> dict:

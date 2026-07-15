@@ -11,6 +11,7 @@ from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -279,15 +280,19 @@ class DeletionSuggestionCreateView(APIView):
 
 
 class DeckSuggestionListView(generics.ListAPIView):
-    """GET /decks/{id}/suggestions/ — lista com filtros da tela (FR-021, FR-022)."""
+    """GET /decks/{id}/suggestions/ — lista com filtros da tela (FR-021, FR-022).
+
+    Leitura pública (US3): o deep-link "Ver histórico" do add-on abre a lista
+    filtrada por nota sem login. Votos/comentários/moderação seguem em views
+    próprias com auth + assinatura.
+    """
 
     serializer_class = SuggestionDetailSerializer
     pagination_class = DefaultCursorPagination
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
         deck = get_object_or_404(Deck, pk=self.kwargs["deck_id"])
-        if not _subscriber_or_none(self.request.user, deck):
-            raise PermissionDenied("Assine o deck para acessar as sugestões.")
 
         qs = (
             Suggestion.objects.filter(deck=deck)

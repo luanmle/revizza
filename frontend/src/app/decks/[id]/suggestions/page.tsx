@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
   useInfiniteQuery,
@@ -515,6 +515,8 @@ function SuggestionCard({
 export default function CommunitySuggestionsPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  // deep-link "Ver histórico" do add-on abre já filtrado por nota (US3)
+  const initialNoteId = useSearchParams().get("note_id") ?? "";
 
   const [tab, setTab] = useState("change");
   const [status, setStatus] = useState("all");
@@ -523,8 +525,8 @@ export default function CommunitySuggestionsPage() {
   const [createdBefore, setCreatedBefore] = useState("");
   // busca por autor/nota aplicada no submit do form (FR-022)
   const [authorInput, setAuthorInput] = useState("");
-  const [noteIdInput, setNoteIdInput] = useState("");
-  const [search, setSearch] = useState({ author: "", note_id: "" });
+  const [noteIdInput, setNoteIdInput] = useState(initialNoteId);
+  const [search, setSearch] = useState({ author: "", note_id: initialNoteId });
 
   const { data: me } = useQuery<{ id: string }>({
     queryKey: ["me"],

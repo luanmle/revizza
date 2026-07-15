@@ -2,23 +2,50 @@
 
 import uuid
 
+from django.conf import settings
 from django.db.models import Q, TextField
 from django.db.models.functions import Cast
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
+from django.views import View
 from rest_framework import generics
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.base import json_text_forms
 from apps.catalog.models import Deck, Subscription
 from config.pagination import DefaultCursorPagination
 
 from .models import Note
-from .serializers import NoteDetailSerializer, NoteListSerializer
+from .serializers import (
+    NoteDetailSerializer,
+    NoteListSerializer,
+    NoteResolveSerializer,
+)
 
 
 def _require_subscription(user, deck):
     if not Subscription.objects.filter(user=user, deck=deck).exists():
         raise PermissionDenied("Assine o deck para acessar as notas.")
+
+
+def note_by_guid(guid):
+    """Resolve o GUID estável do Anki para a Nota não deletada (404 se ausente).
+
+    ponytail: GUID é único global no Anki; se dois decks colidirem, pega o mais
+    recente — troca por unique global se o import passar a garantir isso.
+    """
+    note = (
+        Note.objects.select_related("deck")
+        .filter(guid=guid, deleted_at__isnull=True)
+        .order_by("-mod")
+        .first()
+    )
+    if note is None:
+        raise Http404("Nota não encontrada.")
+    return note
 
 
 class DeckNoteListView(generics.ListAPIView):
@@ -54,15 +81,70 @@ class DeckNoteListView(generics.ListAPIView):
 
 
 class NoteDetailView(generics.RetrieveAPIView):
-    """GET /notes/{id}/ — campos + note type (templates/css) para o preview (FR-011)."""
+    """GET /notes/{id}/ — campos + note type (templates/css) para o preview (FR-011).
+
+    Leitura pública (US1): a página web da nota abre a partir do add-on sem login.
+    Escritas continuam em views próprias com auth + assinatura.
+    """
 
     serializer_class = NoteDetailSerializer
+    permission_classes = [AllowAny]
 
     def get_object(self):
-        note = get_object_or_404(
+        return get_object_or_404(
             Note.objects.select_related("note_type", "deck"),
             pk=self.kwargs["note_id"],
             deleted_at__isnull=True,
         )
-        _require_subscription(self.request.user, note.deck)
-        return note
+
+
+class NoteResolveView(APIView):
+    """GET /notes/resolve/?guid= — ids + URLs da nota (auth, US2 submit flow)."""
+
+    def get(self, request):
+        guid = request.query_params.get("guid")
+        if not guid:
+            return Response(
+                {"guid": ["Parâmetro obrigatório."]},
+                status=400,
+            )
+        try:
+            note = note_by_guid(guid)
+        except Http404:
+            raise NotFound("Nota não encontrada.")
+        return Response(NoteResolveSerializer(note).data)
+
+
+class GuidRedirectView(View):
+    """GET /go/note/<guid>/ — redireciona o navegador para a página da nota (US1).
+
+    Público: aberto pelo botão "Ver no Revizza" do revisor. GUID desconhecido
+    cai na página amigável /nota-nao-encontrada (nunca JSON cru, US1 AS#3).
+    """
+
+    def get(self, request, guid):
+        try:
+            note = note_by_guid(guid)
+        except Http404:
+            return HttpResponseRedirect(f"{settings.FRONTEND_BASE_URL}/nota-nao-encontrada")
+        return HttpResponseRedirect(
+            f"{settings.FRONTEND_BASE_URL}/decks/{note.deck_id}/notes/{note.id}"
+        )
+
+
+class GuidHistoryRedirectView(View):
+    """GET /go/note/<guid>/history/ — redireciona ao histórico de sugestões (US3).
+
+    Público: botão "Ver histórico" do revisor. GUID desconhecido cai na mesma
+    página amigável /nota-nao-encontrada do T007.
+    """
+
+    def get(self, request, guid):
+        try:
+            note = note_by_guid(guid)
+        except Http404:
+            return HttpResponseRedirect(f"{settings.FRONTEND_BASE_URL}/nota-nao-encontrada")
+        return HttpResponseRedirect(
+            f"{settings.FRONTEND_BASE_URL}/decks/{note.deck_id}"
+            f"/suggestions?note_id={note.id}"
+        )
