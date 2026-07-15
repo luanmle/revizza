@@ -10,6 +10,7 @@ import {
 import { MessageSquare, Pencil, Send, Trash2 } from "lucide-react";
 import { api, type Paginated } from "@/lib/api-client";
 import ReportButton from "@/components/ReportButton";
+import { UserAvatar } from "@/components/user-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ interface Comment {
   id: string;
   author: string | null;
   author_name: string | null;
+  avatar_url: string | null;
   body: string;
   created_at: string;
   edited_at: string | null;
@@ -146,6 +148,11 @@ export default function CommentThread({ noteId }: { noteId: string }) {
             return (
               <li key={comment.id} className="py-4 first:pt-0">
                 <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <UserAvatar
+                    avatarUrl={comment.avatar_url}
+                    name={comment.author_name}
+                    className="size-6"
+                  />
                   <span className="font-medium">
                     {own
                       ? "Você"

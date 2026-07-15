@@ -3,6 +3,7 @@ from html import unescape
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
+from apps.accounts import avatars
 from apps.notes.models import NoteType
 from apps.notes.sanitize import sanitize_field_values
 
@@ -197,6 +198,7 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(source="proposed_tags", read_only=True)
     empty_fields = serializers.SerializerMethodField()
     author_name = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
     note_context = serializers.SerializerMethodField()
 
     class Meta:
@@ -208,6 +210,7 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
             "status",
             "author",
             "author_name",
+            "avatar_url",
             "change_category",
             "justification",
             "proposed_field_values",
@@ -226,6 +229,13 @@ class SuggestionDetailSerializer(serializers.ModelSerializer):
 
     def get_author_name(self, suggestion):
         return suggestion.author.name or None if suggestion.author else None
+
+    def get_avatar_url(self, suggestion):
+        return (
+            avatars.public_url(suggestion.author.avatar_path)
+            if suggestion.author
+            else None
+        )
 
     def get_note_context(self, suggestion) -> list[dict]:
         context = []

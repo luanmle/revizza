@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-query";
 import { UserPlus, UserRoundCheck, UserRoundX } from "lucide-react";
 import { api, ApiError, type Paginated } from "@/lib/api-client";
+import { UserAvatar } from "@/components/user-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ interface Moderator {
   id: string;
   user_id: string;
   email: string;
+  name: string;
+  avatar_url: string | null;
   status: "active" | "pending";
   created_at: string;
 }
@@ -198,10 +201,22 @@ export default function ModeratorsPage() {
                 key={moderator.id}
                 className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {own ? `${moderator.email} (você)` : moderator.email}
-                  </p>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <UserAvatar
+                    avatarUrl={moderator.avatar_url}
+                    name={moderator.name || moderator.email}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {(moderator.name || moderator.email) +
+                        (own ? " (você)" : "")}
+                    </p>
+                    {moderator.name && (
+                      <p className="truncate text-sm text-muted-foreground">
+                        {moderator.email}
+                      </p>
+                    )}
+                  </div>
                   <Badge
                     variant={
                       moderator.status === "active" ? "secondary" : "outline"

@@ -30,6 +30,7 @@ def test_author_can_create_list_edit_and_delete_note_comment(auth_client, user, 
     comment_id = created.json()["id"]
     assert created.json()["author"] == str(user.id)
     assert created.json()["author_name"] == "Ana Souza"
+    assert created.json()["avatar_url"] is None  # user sem avatar (007)
 
     listed = auth_client.get(_thread_url(note))
     assert listed.status_code == 200

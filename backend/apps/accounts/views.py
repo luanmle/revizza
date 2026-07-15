@@ -2,12 +2,12 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import supabase_gateway
+from . import avatars, supabase_gateway
 from .models import User
 from .serializers import (
     ConsentsSerializer,
@@ -66,6 +66,25 @@ class MeView(APIView):
         return Response(UserSerializer(request.user).data)
 
     def patch(self, request):
+        avatar_file = request.FILES.get("avatar")
+        if avatar_file is not None:
+            try:
+                content, ext = avatars.validate_and_decode(avatar_file)
+            except serializers.ValidationError as exc:
+                detail = exc.detail if isinstance(exc.detail, list) else [exc.detail]
+                return Response({"avatar": detail}, status=status.HTTP_400_BAD_REQUEST)
+            old_path = request.user.avatar_path
+            new_path = avatars.upload(request.user.id, content, ext)
+            request.user.avatar_path = new_path
+            request.user.save(update_fields=["avatar_path", "updated_at"])
+            if old_path and old_path != new_path:
+                avatars.delete(old_path)
+        elif "avatar" in request.data and request.data.get("avatar") is None:
+            if request.user.avatar_path:
+                avatars.delete(request.user.avatar_path)
+                request.user.avatar_path = None
+                request.user.save(update_fields=["avatar_path", "updated_at"])
+
         serializer = ProfileUpdateSerializer(
             instance=request.user, data=request.data, partial=True
         )

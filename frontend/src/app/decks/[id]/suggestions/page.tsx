@@ -14,6 +14,7 @@ import { Inbox, MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { api, ApiError, type Paginated } from "@/lib/api-client";
 import SuggestionModerationControls from "@/components/SuggestionModerationControls";
 import ReportButton from "@/components/ReportButton";
+import { UserAvatar } from "@/components/user-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ interface Suggestion {
   status: "pending" | "accepted" | "rejected";
   author: string | null;
   author_name: string | null;
+  avatar_url: string | null;
   change_category: string | null;
   justification: string;
   proposed_field_values: Record<string, string> | null;
@@ -62,6 +64,7 @@ interface Comment {
   id: string;
   author: string | null;
   author_name: string | null;
+  avatar_url: string | null;
   body: string;
   created_at: string;
 }
@@ -176,18 +179,25 @@ function CommentsThread({
         </p>
       )}
       {comments.map((comment) => (
-        <div key={comment.id} className="text-sm">
-          <p className="text-muted-foreground">
-            <span className="font-medium">
-              {comment.author === meId
-                ? "Você"
-                : comment.author_name ||
-                  (comment.author ? "Usuário" : "Usuário removido")}
-            </span>{" "}
-            · {formatDate(comment.created_at)}
-          </p>
-          <p>{comment.body}</p>
-          <ReportButton commentId={comment.id} suggestionThread />
+        <div key={comment.id} className="flex gap-2 text-sm">
+          <UserAvatar
+            avatarUrl={comment.avatar_url}
+            name={comment.author_name}
+            className="size-6"
+          />
+          <div>
+            <p className="text-muted-foreground">
+              <span className="font-medium">
+                {comment.author === meId
+                  ? "Você"
+                  : comment.author_name ||
+                    (comment.author ? "Usuário" : "Usuário removido")}
+              </span>{" "}
+              · {formatDate(comment.created_at)}
+            </p>
+            <p>{comment.body}</p>
+            <ReportButton commentId={comment.id} suggestionThread />
+          </div>
         </div>
       ))}
       {thread.hasNextPage && (
@@ -370,7 +380,12 @@ function SuggestionCard({
               Lote · {suggestion.note_ids.length} notas
             </Badge>
           )}
-          <span className="text-sm text-muted-foreground">
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <UserAvatar
+              avatarUrl={suggestion.avatar_url}
+              name={suggestion.author_name}
+              className="size-6"
+            />
             <span className="font-medium">
               {isOwn
                 ? "Você"

@@ -1,6 +1,7 @@
 from django.db.models import Count
 from rest_framework import serializers
 
+from apps.accounts import avatars
 from apps.notes.sanitize import sanitize_html
 
 from .models import Deck, DeckModerator, Subscription
@@ -133,11 +134,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 class DeckModeratorSerializer(serializers.ModelSerializer):
     user_id = serializers.UUIDField(source="user.id", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
+    name = serializers.CharField(source="user.name", read_only=True)
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = DeckModerator
-        fields = ["id", "user_id", "email", "status", "created_at"]
+        fields = ["id", "user_id", "email", "name", "avatar_url", "status", "created_at"]
         read_only_fields = fields
+
+    def get_avatar_url(self, moderator):
+        return avatars.public_url(moderator.user.avatar_path)
 
 
 class ModeratorInviteSerializer(serializers.Serializer):

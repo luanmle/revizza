@@ -1,11 +1,13 @@
 from rest_framework import serializers
 
+from . import avatars
 from .models import User
 
 PROFILE_FIELDS = [
     "id",
     "name",
     "email",
+    "avatar_url",
     "target_career",
     "target_board",
     "consent_marketing_emails",
@@ -16,10 +18,15 @@ PROFILE_FIELDS = [
 
 
 class UserSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = PROFILE_FIELDS
         read_only_fields = PROFILE_FIELDS
+
+    def get_avatar_url(self, user):
+        return avatars.public_url(user.avatar_path)
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -44,6 +51,9 @@ class ConsentsSerializer(serializers.ModelSerializer):
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """PATCH /accounts/me/ — campos texto (avatar é tratado à parte em MeView.patch,
+    pois exige acesso a request.FILES e semântica própria de remoção)."""
+
     class Meta:
         model = User
-        fields = ["name"]
+        fields = ["name", "target_career", "target_board"]

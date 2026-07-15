@@ -19,6 +19,7 @@ class User(BaseModel):
         max_length=16, choices=TargetCareer.choices, null=True, blank=True
     )
     target_board = models.CharField(max_length=120, null=True, blank=True)
+    avatar_path = models.CharField(max_length=500, null=True, blank=True)
     consent_marketing_emails = models.BooleanField(
         default=False
     )  # FR-005: nunca pré-marcado

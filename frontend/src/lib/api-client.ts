@@ -47,11 +47,28 @@ async function request<T>(
   return response.json();
 }
 
+/** PATCH multipart/form-data — usado para upload de arquivo (ex.: avatar), onde o
+ * Content-Type (com boundary) deve ser definido pelo fetch, não fixado em JSON. */
+async function patchForm<T>(path: string, form: FormData): Promise<T> {
+  const headers = await authHeaders();
+  delete headers["Content-Type"];
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers,
+    body: form,
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await response.json().catch(() => null));
+  }
+  return response.json();
+}
+
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
+  patchForm,
   delete: <T>(path: string) => request<T>("DELETE", path),
 };
 

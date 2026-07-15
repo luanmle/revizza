@@ -1,10 +1,14 @@
-"""Contract test: GET /accounts/me/ e PATCH /accounts/me/consents/ (contracts/accounts.md)."""
+"""Contract test: GET/PATCH /accounts/me/ e PATCH /accounts/me/consents/ (contracts/accounts.md,
+contracts/accounts-api.md)."""
 
 import time
 import uuid
+from io import BytesIO
 
 import jwt
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 
 from apps.accounts.models import User
 
@@ -12,6 +16,34 @@ pytestmark = pytest.mark.django_db
 
 ME_URL = "/api/v1/accounts/me/"
 CONSENTS_URL = "/api/v1/accounts/me/consents/"
+
+
+def _image_bytes(fmt="JPEG"):
+    buffer = BytesIO()
+    Image.new("RGB", (10, 10), color="blue").save(buffer, format=fmt)
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def fake_avatar_storage(monkeypatch):
+    """Substitui apps.accounts.avatars por um storage em memória (sem rede/Supabase)."""
+    store: dict[str, bytes] = {}
+
+    def fake_upload(user_id, content, ext):
+        path = f"{user_id}/fake.{ext}"
+        store[path] = content
+        return path
+
+    def fake_delete(path):
+        store.pop(path, None)
+
+    def fake_public_url(path):
+        return f"https://fake.supabase.co/storage/v1/object/public/avatars/{path}" if path else None
+
+    monkeypatch.setattr("apps.accounts.views.avatars.upload", fake_upload)
+    monkeypatch.setattr("apps.accounts.views.avatars.delete", fake_delete)
+    monkeypatch.setattr("apps.accounts.serializers.avatars.public_url", fake_public_url)
+    return store
 
 
 def test_me_returns_profile(auth_client, user):
@@ -48,6 +80,107 @@ def test_patch_me_updates_optional_display_name(auth_client, user):
     assert response.json()["name"] == "Ana Souza"
     user.refresh_from_db()
     assert user.name == "Ana Souza"
+
+
+def test_patch_me_uploads_valid_avatar(auth_client, user, fake_avatar_storage):
+    upload = SimpleUploadedFile(
+        "avatar.jpg", _image_bytes("JPEG"), content_type="image/jpeg"
+    )
+
+    response = auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+
+    assert response.status_code == 200
+    assert response.json()["avatar_url"]
+    user.refresh_from_db()
+    assert user.avatar_path
+
+    fetched = auth_client.get(ME_URL)
+    assert fetched.json()["avatar_url"] == response.json()["avatar_url"]
+
+
+def test_patch_me_rejects_non_image_upload(auth_client, user, fake_avatar_storage):
+    upload = SimpleUploadedFile(
+        "avatar.jpg", b"not an image", content_type="image/jpeg"
+    )
+
+    response = auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+
+    assert response.status_code == 400
+    user.refresh_from_db()
+    assert user.avatar_path is None
+
+
+def test_patch_me_rejects_oversized_avatar(auth_client, user, fake_avatar_storage):
+    from apps.accounts import avatars
+
+    upload = SimpleUploadedFile(
+        "avatar.jpg",
+        b"0" * (avatars.MAX_UPLOAD_BYTES + 1),
+        content_type="image/jpeg",
+    )
+
+    response = auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+
+    assert response.status_code == 400
+
+
+def test_patch_me_name_only_leaves_other_fields_unchanged(
+    auth_client, user, fake_avatar_storage
+):
+    upload = SimpleUploadedFile(
+        "avatar.jpg", _image_bytes("JPEG"), content_type="image/jpeg"
+    )
+    auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+    auth_client.patch(
+        ME_URL, {"target_career": "fiscal", "target_board": "TJ-SP"}, format="json"
+    )
+    before = auth_client.get(ME_URL).json()
+
+    response = auth_client.patch(ME_URL, {"name": "Novo Nome"}, format="json")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Novo Nome"
+    assert body["avatar_url"] == before["avatar_url"]
+    assert body["target_career"] == before["target_career"]
+    assert body["target_board"] == before["target_board"]
+
+
+def test_patch_me_removes_avatar(auth_client, user, fake_avatar_storage):
+    upload = SimpleUploadedFile(
+        "avatar.jpg", _image_bytes("JPEG"), content_type="image/jpeg"
+    )
+    auth_client.patch(ME_URL, {"avatar": upload}, format="multipart")
+
+    response = auth_client.patch(ME_URL, {"avatar": None}, format="json")
+
+    assert response.status_code == 200
+    assert response.json()["avatar_url"] is None
+    user.refresh_from_db()
+    assert user.avatar_path is None
+
+
+def test_patch_me_updates_target_career_and_board(auth_client, user):
+    response = auth_client.patch(
+        ME_URL, {"target_career": "policial", "target_board": "TJ-SP"}, format="json"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["target_career"] == "policial"
+    assert body["target_board"] == "TJ-SP"
+
+    fetched = auth_client.get(ME_URL).json()
+    assert fetched["target_career"] == "policial"
+    assert fetched["target_board"] == "TJ-SP"
+
+
+def test_patch_me_rejects_invalid_target_career(auth_client, user):
+    response = auth_client.patch(
+        ME_URL, {"target_career": "not-a-real-choice"}, format="json"
+    )
+
+    assert response.status_code == 400
 
 
 def test_suspended_user_gets_403(api_client, settings, db):

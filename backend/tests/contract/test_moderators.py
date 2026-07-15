@@ -44,18 +44,21 @@ def test_moderator_invites_and_invitee_accepts(auth_client, user, deck, make_use
 
 
 def test_subscriber_lists_active_and_pending_moderators(
-    auth_client, deck, make_user, make_moderator
+    auth_client, user, deck, make_user, make_moderator
 ):
+    user.name = "Ana Souza"
+    user.save(update_fields=["name"])
     pending = make_user("pendente@example.com")
     make_moderator(deck, pending, status=DeckModerator.Status.PENDING)
 
     response = auth_client.get(_list_url(deck))
 
     assert response.status_code == 200
-    assert {item["status"] for item in response.json()["results"]} == {
-        "active",
-        "pending",
-    }
+    results = response.json()["results"]
+    assert {item["status"] for item in results} == {"active", "pending"}
+    active = next(item for item in results if item["status"] == "active")
+    assert active["name"] == "Ana Souza"
+    assert active["avatar_url"] is None  # user sem avatar (007)
 
 
 def test_non_moderator_cannot_invite(deck, make_user):

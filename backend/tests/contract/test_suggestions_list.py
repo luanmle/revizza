@@ -163,6 +163,7 @@ def test_detail_returns_full_suggestion_with_like_count(
     assert body["status"] == "pending"
     assert body["author"] == str(user.id)
     assert body["author_name"] == "Ana Souza"
+    assert body["avatar_url"] is None  # user sem avatar (007)
     assert body["justification"] == suggestion.justification
     assert body["proposed_field_values"] == {"Verso": "Corrigido"}
     assert body["note_ids"] == [str(note.id)]

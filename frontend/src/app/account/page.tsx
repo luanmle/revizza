@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
@@ -16,19 +17,36 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { UserAvatar } from "@/components/user-avatar";
 import { api, ApiError } from "@/lib/api-client";
 
 interface Profile {
   name: string;
   email: string;
+  avatar_url: string | null;
   target_career: string | null;
   target_board: string | null;
   consent_marketing_emails: boolean;
   consent_research_data: boolean;
 }
 
+const TARGET_CAREERS = [
+  { value: "fiscal", label: "Fiscal" },
+  { value: "policial", label: "Policial" },
+  { value: "juridica", label: "Jurídica" },
+  { value: "outra", label: "Outra" },
+];
+
 export default function AccountPage() {
   const queryClient = useQueryClient();
+  const [avatarError, setAvatarError] = useState("");
   const { data: me, error } = useQuery<Profile>({
     queryKey: ["me"],
     queryFn: () => api.get<Profile>("/accounts/me/"),
@@ -43,6 +61,31 @@ export default function AccountPage() {
   });
   const updateProfile = useMutation({
     mutationFn: (name: string) => api.patch<Profile>("/accounts/me/", { name }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
+  const updateCareer = useMutation({
+    mutationFn: (patch: Pick<Profile, "target_career" | "target_board">) =>
+      api.patch<Profile>("/accounts/me/", patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+  });
+  const uploadAvatar = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("avatar", file);
+      return api.patchForm<Profile>("/accounts/me/", form);
+    },
+    onSuccess: () => {
+      setAvatarError("");
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (err: unknown) => {
+      const body =
+        err instanceof ApiError ? (err.body as { avatar?: string[] } | null) : null;
+      setAvatarError(body?.avatar?.[0] ?? "Não foi possível enviar a foto.");
+    },
+  });
+  const removeAvatar = useMutation({
+    mutationFn: () => api.patch<Profile>("/accounts/me/", { avatar: null }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
   });
 
@@ -84,6 +127,46 @@ export default function AccountPage() {
             <CardDescription>{me.email}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            <div className="flex items-center gap-4">
+              <UserAvatar
+                avatarUrl={me.avatar_url}
+                name={me.name || me.email}
+                className="size-16 text-lg"
+              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Label htmlFor="avatar-upload" className="sr-only">
+                  Foto de perfil
+                </Label>
+                <Input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="max-w-56"
+                  disabled={uploadAvatar.isPending}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) uploadAvatar.mutate(file);
+                    event.target.value = "";
+                  }}
+                />
+                {me.avatar_url && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={removeAvatar.isPending}
+                    onClick={() => removeAvatar.mutate()}
+                  >
+                    {removeAvatar.isPending ? "Removendo…" : "Remover foto"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            {avatarError && (
+              <p role="alert" className="text-sm text-destructive">
+                {avatarError}
+              </p>
+            )}
             <form
               className="grid gap-2"
               onSubmit={(event) => {
@@ -119,26 +202,63 @@ export default function AccountPage() {
                 </p>
               )}
             </form>
-            {(me.target_career || me.target_board) && (
-              <div className="grid gap-2 text-sm">
-                {me.target_career && (
-                  <p>
-                    <span className="text-muted-foreground">
-                      Carreira alvo:
-                    </span>{" "}
-                    {me.target_career}
-                  </p>
-                )}
-                {me.target_board && (
-                  <p>
-                    <span className="text-muted-foreground">
-                      Banca ou edital:
-                    </span>{" "}
-                    {me.target_board}
-                  </p>
-                )}
+            <form
+              className="grid gap-3 sm:grid-cols-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                updateCareer.mutate({
+                  target_career:
+                    (form.get("target_career") as string) || null,
+                  target_board:
+                    String(form.get("target_board") ?? "").trim() || null,
+                });
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="target-career">Carreira alvo</Label>
+                <Select
+                  name="target_career"
+                  defaultValue={me.target_career ?? undefined}
+                  items={TARGET_CAREERS}
+                >
+                  <SelectTrigger id="target-career" className="w-full">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TARGET_CAREERS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="target-board">Banca ou edital</Label>
+                <Input
+                  id="target-board"
+                  name="target_board"
+                  defaultValue={me.target_board ?? ""}
+                  maxLength={120}
+                  placeholder="Ex.: CESPE/CEBRASPE"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={updateCareer.isPending}
+                >
+                  {updateCareer.isPending ? "Salvando…" : "Salvar carreira"}
+                </Button>
+              </div>
+              {updateCareer.isError && (
+                <p role="alert" className="text-sm text-destructive sm:col-span-2">
+                  Não foi possível salvar a carreira alvo.
+                </p>
+              )}
+            </form>
           </CardContent>
         </Card>
 
