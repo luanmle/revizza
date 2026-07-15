@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
@@ -46,7 +46,9 @@ const TARGET_CAREERS = [
 
 export default function AccountPage() {
   const queryClient = useQueryClient();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarError, setAvatarError] = useState("");
+  const [selectedAvatarName, setSelectedAvatarName] = useState("");
   const { data: me, error } = useQuery<Profile>({
     queryKey: ["me"],
     queryFn: () => api.get<Profile>("/accounts/me/"),
@@ -80,13 +82,21 @@ export default function AccountPage() {
     },
     onError: (err: unknown) => {
       const body =
-        err instanceof ApiError ? (err.body as { avatar?: string[] } | null) : null;
+        err instanceof ApiError
+          ? (err.body as { avatar?: string[] } | null)
+          : null;
+      setSelectedAvatarName("");
       setAvatarError(body?.avatar?.[0] ?? "Não foi possível enviar a foto.");
     },
   });
   const removeAvatar = useMutation({
     mutationFn: () => api.patch<Profile>("/accounts/me/", { avatar: null }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["me"] }),
+    onSuccess: () => {
+      setAvatarError("");
+      setSelectedAvatarName("");
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: () => setAvatarError("Não foi possível remover a foto."),
   });
 
   if (error instanceof ApiError && error.status === 401) {
@@ -133,33 +143,63 @@ export default function AccountPage() {
                 name={me.name || me.email}
                 className="size-16 text-lg"
               />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Label htmlFor="avatar-upload" className="sr-only">
-                  Foto de perfil
-                </Label>
-                <Input
+              <div className="min-w-0 flex-1">
+                <input
+                  ref={avatarInputRef}
                   id="avatar-upload"
                   type="file"
+                  aria-label="Foto de perfil"
                   accept="image/jpeg,image/png,image/webp"
-                  className="max-w-56"
+                  className="sr-only"
+                  tabIndex={-1}
                   disabled={uploadAvatar.isPending}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
+                    setAvatarError("");
+                    setSelectedAvatarName(file?.name ?? "");
                     if (file) uploadAvatar.mutate(file);
                     event.target.value = "";
                   }}
                 />
-                {me.avatar_url && (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    disabled={removeAvatar.isPending}
-                    onClick={() => removeAvatar.mutate()}
+                    disabled={uploadAvatar.isPending || removeAvatar.isPending}
+                    onClick={() => {
+                      setAvatarError("");
+                      setSelectedAvatarName("");
+                      avatarInputRef.current?.click();
+                    }}
                   >
-                    {removeAvatar.isPending ? "Removendo…" : "Remover foto"}
+                    {uploadAvatar.isPending ? "Enviando…" : "Alterar foto"}
                   </Button>
-                )}
+                  {me.avatar_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={
+                        uploadAvatar.isPending || removeAvatar.isPending
+                      }
+                      onClick={() => removeAvatar.mutate()}
+                    >
+                      {removeAvatar.isPending ? "Removendo…" : "Remover foto"}
+                    </Button>
+                  )}
+                </div>
+                <p
+                  id="avatar-upload-status"
+                  aria-live="polite"
+                  className="mt-2 break-words text-sm text-muted-foreground"
+                >
+                  {uploadAvatar.isPending
+                    ? `Enviando ${selectedAvatarName}…`
+                    : selectedAvatarName
+                      ? `Arquivo enviado: ${selectedAvatarName}`
+                      : "Nenhum arquivo selecionado."}
+                </p>
               </div>
             </div>
             {avatarError && (
@@ -208,8 +248,7 @@ export default function AccountPage() {
                 event.preventDefault();
                 const form = new FormData(event.currentTarget);
                 updateCareer.mutate({
-                  target_career:
-                    (form.get("target_career") as string) || null,
+                  target_career: (form.get("target_career") as string) || null,
                   target_board:
                     String(form.get("target_board") ?? "").trim() || null,
                 });
@@ -254,7 +293,10 @@ export default function AccountPage() {
                 </Button>
               </div>
               {updateCareer.isError && (
-                <p role="alert" className="text-sm text-destructive sm:col-span-2">
+                <p
+                  role="alert"
+                  className="text-sm text-destructive sm:col-span-2"
+                >
                   Não foi possível salvar a carreira alvo.
                 </p>
               )}

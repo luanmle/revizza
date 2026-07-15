@@ -209,13 +209,21 @@ export default function NotesSearchPage() {
       {notes.isError && (
         <Alert variant="destructive">
           <AlertTitle>Erro ao buscar notas</AlertTitle>
-          <AlertDescription>
-            {(notes.error instanceof ApiError &&
-              (notes.error.body as { detail?: string } | null)?.detail) ||
-              "Não foi possível buscar as notas."}{" "}
-            <button className="underline" onClick={() => notes.refetch()}>
-              Tentar novamente
-            </button>
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            <span>
+              {(notes.error instanceof ApiError &&
+                (notes.error.body as { detail?: string } | null)?.detail) ||
+                "Não foi possível buscar as notas."}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={notes.isFetching}
+              onClick={() => notes.refetch()}
+            >
+              {notes.isFetching ? "Tentando novamente…" : "Tentar novamente"}
+            </Button>
           </AlertDescription>
         </Alert>
       )}

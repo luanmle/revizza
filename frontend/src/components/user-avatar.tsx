@@ -11,24 +11,34 @@ export function UserAvatar({
   name?: string | null;
   className?: string;
 }) {
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        className={cn("size-8 shrink-0 rounded-full object-cover", className)}
-      />
-    );
-  }
   return (
     <span
       aria-hidden
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground",
+        "relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-medium text-muted-foreground",
         className,
       )}
     >
       {name?.trim()?.[0]?.toUpperCase() ?? "?"}
+      {avatarUrl && (
+        // Dynamic avatar hosts are not allowlisted for next/image.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={avatarUrl}
+          alt=""
+          width={32}
+          height={32}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 size-full object-cover"
+          onLoad={(event) => {
+            event.currentTarget.hidden = false;
+          }}
+          onError={(event) => {
+            event.currentTarget.hidden = true;
+          }}
+        />
+      )}
     </span>
   );
 }

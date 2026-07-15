@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,9 +40,12 @@ export default function PasswordResetPage() {
     <main className="mx-auto w-full max-w-md p-4 py-10 md:p-6 md:py-16">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <h1
+            data-slot="card-title"
+            className="font-heading text-2xl leading-snug font-semibold tracking-tight"
+          >
             Recuperar senha
-          </CardTitle>
+          </h1>
           <CardDescription>
             Informe o e-mail usado no cadastro para receber um link seguro.
           </CardDescription>

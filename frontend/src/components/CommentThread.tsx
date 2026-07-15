@@ -121,11 +121,17 @@ export default function CommentThread({ noteId }: { noteId: string }) {
       {comments.isError && (
         <Alert variant="destructive">
           <AlertTitle>Não foi possível carregar a discussão</AlertTitle>
-          <AlertDescription>
-            Confira sua conexão e tente novamente.{" "}
-            <button className="underline" onClick={() => comments.refetch()}>
-              Tentar novamente
-            </button>
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            <span>Confira sua conexão e tente novamente.</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={comments.isFetching}
+              onClick={() => comments.refetch()}
+            >
+              {comments.isFetching ? "Tentando novamente…" : "Tentar novamente"}
+            </Button>
           </AlertDescription>
         </Alert>
       )}

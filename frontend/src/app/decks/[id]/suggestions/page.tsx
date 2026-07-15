@@ -707,13 +707,24 @@ export default function CommunitySuggestionsPage() {
       {suggestions.isError && (
         <Alert variant="destructive">
           <AlertTitle>Erro ao carregar sugestões</AlertTitle>
-          <AlertDescription>
-            {(suggestions.error instanceof ApiError &&
-              (suggestions.error.body as { detail?: string } | null)?.detail) ||
-              "Não foi possível carregar as sugestões."}{" "}
-            <button className="underline" onClick={() => suggestions.refetch()}>
-              Tentar novamente
-            </button>
+          <AlertDescription className="flex flex-wrap items-center gap-2">
+            <span>
+              {(suggestions.error instanceof ApiError &&
+                (suggestions.error.body as { detail?: string } | null)
+                  ?.detail) ||
+                "Não foi possível carregar as sugestões."}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={suggestions.isFetching}
+              onClick={() => suggestions.refetch()}
+            >
+              {suggestions.isFetching
+                ? "Tentando novamente…"
+                : "Tentar novamente"}
+            </Button>
           </AlertDescription>
         </Alert>
       )}
