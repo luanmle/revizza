@@ -17,7 +17,15 @@ def _client():
 
 def sign_up(email: str, password: str) -> str:
     """Cria o usuário no Supabase Auth (dispara e-mail de verificação); retorna o auth_id."""
-    response = _client().auth.sign_up({"email": email, "password": password})
+    response = _client().auth.sign_up(
+        {
+            "email": email,
+            "password": password,
+            "options": {
+                "email_redirect_to": settings.EMAIL_CONFIRMATION_REDIRECT_URL,
+            },
+        }
+    )
     return str(response.user.id)
 
 

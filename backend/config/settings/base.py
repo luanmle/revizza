@@ -121,6 +121,10 @@ PASSWORD_RESET_REDIRECT_URL = os.environ.get(
     "PASSWORD_RESET_REDIRECT_URL",
     "http://localhost:3000/password-reset/callback",
 )
+EMAIL_CONFIRMATION_REDIRECT_URL = os.environ.get(
+    "EMAIL_CONFIRMATION_REDIRECT_URL",
+    f"{FRONTEND_BASE_URL}/verify-email",
+)
 
 # --- DRF: paginação por cursor + versionamento via header Accept (contracts/api-conventions.md) ---
 REST_FRAMEWORK = {
