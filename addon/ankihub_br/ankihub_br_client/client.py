@@ -140,7 +140,15 @@ class AnkiHubBrClient:
         # URL pré-assinada do Storage — sem o header Authorization da API, mas pela
         # session (mesmo retry/backoff/Retry-After do resto — research.md §6).
         # Stream + guarda de bytes: aborta antes de bufferizar corpo grande (§5).
-        response = self.session.get(url, timeout=DEFAULT_TIMEOUT, stream=True)
+        # headers={"Authorization": None} remove o Bearer da API que a session
+        # carrega de forma persistente — a URL assinada do Storage traz o próprio
+        # token na query e o Supabase rejeita um Bearer estranho (401/403).
+        response = self.session.get(
+            url,
+            timeout=DEFAULT_TIMEOUT,
+            stream=True,
+            headers={"Authorization": None},
+        )
         response.raise_for_status()
         declared = response.headers.get("Content-Length")
         if declared is not None and int(declared) > MEDIA_MAX_BYTES:

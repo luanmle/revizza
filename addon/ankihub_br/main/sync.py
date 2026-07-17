@@ -316,14 +316,15 @@ def apply_prepared(col, client, prepared: dict) -> dict:
     """Fase de coleção (US4): aplica notas + mídia já validada em `prepare_deck`."""
 
     def _apply(current_payload: dict, staged: list, *, full: bool) -> None:
-        # Mídia primeiro (research.md §2, §4): o nome local derivado do hash já
-        # está fixado, então o <img src> sai reescrito. Item que falhou no
-        # staging fica fora do mapa e do commit (F1).
-        resolved_by_hash = {s.content_hash: s.resolved_filename for s in staged}
+        # Mídia primeiro (research.md §2, §4): grava a mídia ANTES das notas e usa
+        # o nome REALMENTE escrito por write_data (que renomeia em colisão) para
+        # reescrever o <img src> — assim o campo nunca aponta para um arquivo
+        # ausente. Item que falhou no staging fica fora do mapa (F1).
+        committed = media_mod.commit_media(col, staged)  # content_hash → nome final
         media_map = {
-            m["filename"]: resolved_by_hash[m["content_hash"]]
+            m["filename"]: committed[m["content_hash"]]
             for m in current_payload.get("media", [])
-            if m["content_hash"] in resolved_by_hash
+            if m["content_hash"] in committed
         }
         apply = apply_full if full else apply_delta
         apply(
@@ -334,7 +335,6 @@ def apply_prepared(col, client, prepared: dict) -> dict:
             protected_tags=prepared["protected_tags"],
             media_map=media_map,
         )
-        media_mod.commit_media(col, staged)  # escreve na pasta de mídia do Anki
 
     payload = prepared["payload"]
     if prepared["is_full"]:
