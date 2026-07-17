@@ -29,6 +29,12 @@ describe("renderAnkiTemplate", () => {
     );
   });
 
+  it("campo só com <img> conta como preenchido no condicional", () => {
+    const template = "{{#Extra}}{{Extra}}{{/Extra}}{{^Extra}}vazio{{/Extra}}";
+    const img = '<img src="https://x/f.png">';
+    expect(renderAnkiTemplate(template, { ...fields, Extra: img })).toBe(img);
+  });
+
   it("resolve condicionais aninhadas e a condição do cloze ativo", () => {
     const template =
       "{{#Frente}}fora {{#Verso}}dentro{{/Verso}}{{/Frente}} {{#c1}}dica{{/c1}}";

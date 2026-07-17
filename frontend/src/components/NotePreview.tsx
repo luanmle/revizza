@@ -55,9 +55,12 @@ function renderConditionals(
 ): string {
   function present(name: string) {
     const cloze = /^c(\d+)$/i.exec(name);
-    return cloze
-      ? Number(cloze[1]) === clozeOrdinal
-      : stripHtml(fields[name] ?? "").trim().length > 0;
+    if (cloze) return Number(cloze[1]) === clozeOrdinal;
+    const value = fields[name] ?? "";
+    // campo só com mídia (<img>) conta como preenchido, igual ao Anki
+    return (
+      stripHtml(value).trim().length > 0 || /<(img|audio|video|object)\b/i.test(value)
+    );
   }
 
   function walk(start: number, closing?: string): [string, number, boolean] {
