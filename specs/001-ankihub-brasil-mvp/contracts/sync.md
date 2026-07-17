@@ -10,6 +10,8 @@ Anki — nunca diretamente pelo frontend web.
 | GET | `/api/v1/decks/{id}/sync/full/` | assinante | Retorna o deck completo (tipos de nota, notas, tags, subdecks) para ressincronização total | FR-035 |
 | GET | `/api/v1/media/{content_hash}/` | assinante | Retorna URL pré-assinada do Supabase Storage para a mídia, apenas se o hash não corresponde ao já presente localmente | FR-036 |
 
+> As linhas de mídia (`publish`, `GET /media/{content_hash}/`) são endurecidas na feature 011 — ver `specs/011-addon-media-sync/contracts/media-sync.md` para o gating por `status`, o endpoint `/confirm/` e o pipeline de staging/validação.
+
 **Regras aplicadas neste conjunto de rotas**:
 - Publicação: o `POST .../publish/` é create-only. Depois da importação inicial, mudanças oficiais
   entram pela web e pelo fluxo de sugestão → moderação; o add-on nunca sobrescreve o deck oficial.

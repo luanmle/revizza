@@ -97,8 +97,22 @@ def publish_initial_deck(
     subject_tags: list[str] | None = None,
 ) -> dict:
     payload, media_blobs = build_publish_payload(col, local_deck_id, subject_tags)
+    return publish_uploads(client, remote_deck_id, payload, media_blobs)
+
+
+def publish_uploads(client, remote_deck_id: str, payload: dict, media_blobs: dict) -> dict:
+    """Fase de rede do publish (US4/T029): sem leitura da coleção.
+
+    Roda numa `QueryOp(...).without_collection()`: o payload já foi montado a
+    partir da coleção antes desta fase.
+    """
     result = client.publish_deck(remote_deck_id, payload)
+    # o backend só devolve URL para hash inédito (get_or_create), então re-upload de
+    # mídia já existente já é pulado no servidor. Confirmamos cada upload logo após
+    # seu sucesso: um crash no meio deixa os confirmados prontos e o confirm é
+    # idempotente na retentativa (FR-004/FR-006, contracts/media-sync.md §4/§5).
     for content_hash, url in result.get("media_upload_urls", {}).items():
         filename, content = media_blobs[content_hash]
         client.upload_signed_media(url, filename, content)
+        client.confirm_media_upload(remote_deck_id, content_hash)
     return result

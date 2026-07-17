@@ -12,6 +12,11 @@ from urllib3.util.retry import Retry
 
 API_VERSION = "1"
 DEFAULT_TIMEOUT = 30  # segundos
+MEDIA_MAX_BYTES = 10 * 1024 * 1024  # 10 MB (research.md §5)
+
+
+class MediaTooLarge(RuntimeError):
+    """Corpo do download excedeu MEDIA_MAX_BYTES (FR-009)."""
 
 
 class AnkiHubBrClient:
@@ -128,11 +133,26 @@ class AnkiHubBrClient:
     def get_media_url(self, content_hash: str) -> str:
         return self.get(f"/media/{content_hash}/").json()["url"]
 
+    def confirm_media_upload(self, deck_id: str, content_hash: str) -> None:
+        self.post(f"/decks/{deck_id}/media/{content_hash}/confirm/")
+
     def download_file(self, url: str) -> bytes:
-        # URL pré-assinada do Storage — sem o header Authorization da API
-        response = requests.get(url, timeout=DEFAULT_TIMEOUT)
+        # URL pré-assinada do Storage — sem o header Authorization da API, mas pela
+        # session (mesmo retry/backoff/Retry-After do resto — research.md §6).
+        # Stream + guarda de bytes: aborta antes de bufferizar corpo grande (§5).
+        response = self.session.get(url, timeout=DEFAULT_TIMEOUT, stream=True)
         response.raise_for_status()
-        return response.content
+        declared = response.headers.get("Content-Length")
+        if declared is not None and int(declared) > MEDIA_MAX_BYTES:
+            response.close()
+            raise MediaTooLarge(f"Content-Length {declared} excede o limite.")
+        chunks = bytearray()
+        for chunk in response.iter_content(chunk_size=64 * 1024):
+            chunks.extend(chunk)
+            if len(chunks) > MEDIA_MAX_BYTES:  # header ausente ou mentiroso
+                response.close()
+                raise MediaTooLarge("Corpo excede o limite durante o download.")
+        return bytes(chunks)
 
     def publish_deck(self, deck_id: str, payload: dict) -> dict:
         return self.post(f"/decks/{deck_id}/publish/", json=payload).json()

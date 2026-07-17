@@ -114,11 +114,31 @@ def _apply_note_types(col, note_types: list[dict], *, allow_structural: bool) ->
     return mapping
 
 
+def _rewrite_media_refs(value: str, media_map: dict[str, str]) -> str:
+    """Reescreve <img src="orig"> para o nome local derivado do hash (FR-011).
+
+    Só toca no atributo src; hash de conteúdo determina o nome, então mídia que
+    falhou na validação (ausente de media_map) mantém a referência original (F1).
+    """
+    if not media_map:
+        return value
+    for original, resolved in media_map.items():
+        if original == resolved or original not in value:
+            continue
+        # ponytail: substitui só a forma src="fname"/src='fname'; colisão de nome
+        # intra-deck (mesmo filename, hashes distintos no mesmo payload) não é caso
+        # de US2 (que é cross-deck) — cada deck sincroniza seu payload isolado
+        value = value.replace(f'src="{original}"', f'src="{resolved}"')
+        value = value.replace(f"src='{original}'", f"src='{resolved}'")
+    return value
+
+
 def _fill_fields(
     note,
     field_names: list[str],
     field_values: dict,
     protected_fields: set[str] | None = None,
+    media_map: dict[str, str] | None = None,
 ) -> None:
     protected_fields = protected_fields or set()
     for index, field_name in enumerate(field_names):
@@ -127,7 +147,9 @@ def _fill_fields(
             and field_name not in protected_fields
             and index < len(note.fields)
         ):
-            note.fields[index] = field_values[field_name]
+            note.fields[index] = _rewrite_media_refs(
+                field_values[field_name], media_map or {}
+            )
 
 
 def _remove_or_mark(col, note_id, *, delete_notes_on_removal: bool) -> None:
@@ -149,6 +171,7 @@ def _apply_notes(
     delete_notes_on_removal: bool,
     protected_fields: set[str],
     protected_tags: set[str],
+    media_map: dict[str, str] | None = None,
 ) -> None:
     """Fase 2 (FR-034). Cria/atualiza/remove notas pelo guid."""
     root_deck_id = col.decks.id(deck_name)
@@ -165,12 +188,14 @@ def _apply_notes(
         if note_id:
             note = col.get_note(note_id)
             fields_to_keep = protected_field_names(note.tags, protected_fields)
-            _fill_fields(note, field_names, item["field_values"], fields_to_keep)
+            _fill_fields(
+                note, field_names, item["field_values"], fields_to_keep, media_map
+            )
             note.tags = merge_tags(item["tags"], note.tags, protected_tags)
             col.update_note(note)
         else:
             note = col.new_note(model)
-            _fill_fields(note, field_names, item["field_values"])
+            _fill_fields(note, field_names, item["field_values"], media_map=media_map)
             note.tags = list(item["tags"])
             note.guid = item["guid"]
             col.add_note(note, root_deck_id)
@@ -196,6 +221,7 @@ def apply_delta(
     delete_notes_on_removal: bool = False,
     protected_fields: set[str] | None = None,
     protected_tags: set[str] | None = None,
+    media_map: dict[str, str] | None = None,
 ) -> None:
     models_map = _apply_note_types(col, payload["note_types"], allow_structural=False)
     _apply_notes(
@@ -206,6 +232,7 @@ def apply_delta(
         delete_notes_on_removal=delete_notes_on_removal,
         protected_fields=protected_fields or set(),
         protected_tags=protected_tags or set(),
+        media_map=media_map,
     )
     _apply_subdeck_moves(col, payload["deck_name"], payload["notes"])
 
@@ -217,6 +244,7 @@ def apply_full(
     delete_notes_on_removal: bool = False,
     protected_fields: set[str] | None = None,
     protected_tags: set[str] | None = None,
+    media_map: dict[str, str] | None = None,
 ) -> None:
     """Ressincronização completa (FR-035): upsert de tudo + remoção do que saiu."""
     models_map = _apply_note_types(col, payload["note_types"], allow_structural=True)
@@ -228,6 +256,7 @@ def apply_full(
         delete_notes_on_removal=delete_notes_on_removal,
         protected_fields=protected_fields or set(),
         protected_tags=protected_tags or set(),
+        media_map=media_map,
     )
     _apply_subdeck_moves(col, payload["deck_name"], payload["notes"])
 
@@ -240,62 +269,134 @@ def apply_full(
             )
 
 
-def perform_sync(
-    col, client, deck_id: str, *, delete_notes_on_removal: bool = False
+def prepare_deck(
+    col,
+    client,
+    deck_id: str,
+    *,
+    delete_notes_on_removal: bool = False,
+    concurrency: int = media_mod.MEDIA_CONCURRENCY_DEFAULT,
+    should_cancel=None,
+    on_progress=None,
 ) -> dict:
-    """Aplica delta (ou full) e mídia de um deck dentro do run atual."""
+    """Fase de rede (US4): baixa payload + faz staging da mídia; sem escrita na coleção.
+
+    Roda numa `QueryOp(...).without_collection()` para manter o Anki responsivo
+    durante downloads pesados (research.md §4). A escrita só acontece em
+    `apply_prepared`.
+    """
     since_mod = state.last_synced_mod(deck_id)
     get_protection = getattr(client, "get_deck_protection", None)
     protection = get_protection(deck_id) if get_protection else {}
-    protected_fields = set(protection.get("fields", []))
-    protected_tags = set(protection.get("tags", []))
     payload = client.get_deck_delta(deck_id, since_mod)
-    if payload.get("full_resync_required"):
+    is_full = bool(payload.get("full_resync_required"))
+    if is_full:
         payload = client.get_deck_full(deck_id)
-        apply_full(
+    staged = media_mod.stage_media(
+        col,
+        payload.get("media", []),
+        client,
+        media_mod.media_staging_dir(),
+        concurrency=concurrency,
+        should_cancel=should_cancel,
+        on_progress=on_progress,
+    )
+    return {
+        "deck_id": deck_id,
+        "payload": payload,
+        "is_full": is_full,
+        "staged": staged,
+        "delete_notes_on_removal": delete_notes_on_removal,
+        "protected_fields": set(protection.get("fields", [])),
+        "protected_tags": set(protection.get("tags", [])),
+    }
+
+
+def apply_prepared(col, client, prepared: dict) -> dict:
+    """Fase de coleção (US4): aplica notas + mídia já validada em `prepare_deck`."""
+
+    def _apply(current_payload: dict, staged: list, *, full: bool) -> None:
+        # Mídia primeiro (research.md §2, §4): o nome local derivado do hash já
+        # está fixado, então o <img src> sai reescrito. Item que falhou no
+        # staging fica fora do mapa e do commit (F1).
+        resolved_by_hash = {s.content_hash: s.resolved_filename for s in staged}
+        media_map = {
+            m["filename"]: resolved_by_hash[m["content_hash"]]
+            for m in current_payload.get("media", [])
+            if m["content_hash"] in resolved_by_hash
+        }
+        apply = apply_full if full else apply_delta
+        apply(
             col,
-            payload,
-            delete_notes_on_removal=delete_notes_on_removal,
-            protected_fields=protected_fields,
-            protected_tags=protected_tags,
+            current_payload,
+            delete_notes_on_removal=prepared["delete_notes_on_removal"],
+            protected_fields=prepared["protected_fields"],
+            protected_tags=prepared["protected_tags"],
+            media_map=media_map,
         )
-    else:
-        try:
-            apply_delta(
-                col,
-                payload,
-                delete_notes_on_removal=delete_notes_on_removal,
-                protected_fields=protected_fields,
-                protected_tags=protected_tags,
-            )
-        except FullResyncRequired:
-            payload = client.get_deck_full(deck_id)
-            apply_full(
-                col,
-                payload,
-                delete_notes_on_removal=delete_notes_on_removal,
-                protected_fields=protected_fields,
-                protected_tags=protected_tags,
-            )
-    media_mod.sync_media(col, payload.get("media", []), client)
+        media_mod.commit_media(col, staged)  # escreve na pasta de mídia do Anki
+
+    payload = prepared["payload"]
+    if prepared["is_full"]:
+        _apply(payload, prepared["staged"], full=True)
+        return payload
+    try:
+        _apply(payload, prepared["staged"], full=False)
+    except FullResyncRequired:
+        # fallback raro: repuxa o deck inteiro e re-encena a mídia. Roda na thread
+        # de background do QueryOp, então não trava a UI (research.md §4).
+        payload = client.get_deck_full(prepared["deck_id"])
+        staged = media_mod.stage_media(
+            col, payload.get("media", []), client, media_mod.media_staging_dir()
+        )
+        _apply(payload, staged, full=True)
     return payload
 
 
-def sync_decks(col, client, deck_options: list[tuple[str, bool]]) -> list[dict]:
-    """Sincroniza todos decks sob um backup e uma transação de estado."""
-    if not deck_options:
+def perform_sync(
+    col, client, deck_id: str, *, delete_notes_on_removal: bool = False
+) -> dict:
+    """Aplica delta (ou full) e mídia de um deck dentro do run atual (caminho síncrono)."""
+    prepared = prepare_deck(
+        col, client, deck_id, delete_notes_on_removal=delete_notes_on_removal
+    )
+    return apply_prepared(col, client, prepared)
+
+
+def prepare_run(
+    col,
+    client,
+    deck_options: list[tuple[str, bool]],
+    *,
+    concurrency: int = media_mod.MEDIA_CONCURRENCY_DEFAULT,
+    should_cancel=None,
+    on_progress=None,
+) -> list[dict]:
+    """Fase de rede de todos os decks: nenhuma escrita na coleção (US4, T028)."""
+    return [
+        prepare_deck(
+            col,
+            client,
+            deck_id,
+            delete_notes_on_removal=delete_notes_on_removal,
+            concurrency=concurrency,
+            should_cancel=should_cancel,
+            on_progress=on_progress,
+        )
+        for deck_id, delete_notes_on_removal in deck_options
+    ]
+
+
+def commit_run(col, client, prepared_decks: list[dict]) -> list[dict]:
+    """Fase de coleção de todos os decks sob um backup e uma transação de estado."""
+    if not prepared_decks:
         return []
     backup_path = backup_mod.create_backup(col)  # FR-033: um snapshot por run
     results = []
     try:
-        for deck_id, delete_notes_on_removal in deck_options:
-            payload = perform_sync(
-                col,
-                client,
-                deck_id,
-                delete_notes_on_removal=delete_notes_on_removal,
-            )
-            results.append((deck_id, payload))
+        for prepared in prepared_decks:
+            payload = apply_prepared(col, client, prepared)
+            results.append((prepared["deck_id"], payload))
         with state.database.atomic():
             for deck_id, payload in results:
                 state.record_synced_notes(deck_id, payload["notes"])
@@ -303,3 +404,10 @@ def sync_decks(col, client, deck_options: list[tuple[str, bool]]) -> list[dict]:
         backup_mod.restore_backup(col, backup_path)  # FR-039
         raise
     return [payload for _, payload in results]
+
+
+def sync_decks(col, client, deck_options: list[tuple[str, bool]]) -> list[dict]:
+    """Sincroniza todos decks sob um backup e uma transação de estado (caminho síncrono)."""
+    if not deck_options:
+        return []
+    return commit_run(col, client, prepare_run(col, client, deck_options))

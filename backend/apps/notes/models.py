@@ -53,12 +53,20 @@ class Note(BaseModel):
 class MediaFile(BaseModel):
     """Mídia (imagem) referenciada em campos, deduplicada por hash (FR-036)."""
 
+    STATUS_CHOICES = (
+        ("pending_upload", "Pending upload"),
+        ("ready", "Ready"),
+    )
+
     deck = models.ForeignKey(
         "catalog.Deck", on_delete=models.CASCADE, related_name="media_files"
     )
     content_hash = models.CharField(max_length=64)  # sha256
     storage_path = models.CharField(max_length=500)  # caminho no Supabase Storage
     original_filename = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="ready"
+    )
 
     class Meta:
         constraints = [

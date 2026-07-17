@@ -360,31 +360,43 @@ def show_publish() -> None:
             token=token,
             anki_version=compat.anki_version(),
         )
-        result = publish.publish_initial_deck(
+        # leitura da coleção na thread Qt; upload vai para background (US4/T029)
+        payload, media_blobs = publish.build_publish_payload(
             mw.col,
-            client,
             local_deck_id,
-            remote_deck_id,
             [item.strip() for item in tags.text().split(",") if item.strip()],
         )
-    except requests.HTTPError as exc:
+    except Exception as exc:
         report_exception(exc)
-        if exc.response is not None and exc.response.status_code == 409:
+        showWarning(f"A importação falhou: {exc}")
+        return
+
+    def publish_failed(exc: Exception) -> None:
+        report_exception(exc)
+        if (
+            isinstance(exc, requests.HTTPError)
+            and exc.response is not None
+            and exc.response.status_code == 409
+        ):
             showWarning(
                 "O deck já existe na plataforma. A importação não foi repetida; "
                 "use sugestões na web para alterá-lo."
             )
         else:
             showWarning(f"A importação falhou: {exc}")
-        return
-    except Exception as exc:
-        report_exception(exc)
-        showWarning(f"A importação falhou: {exc}")
-        return
 
-    published[str(local_deck_id)]["status"] = "published"
-    _write_config(config)
-    tooltip(f"Deck importado com {result['note_count']} nota(s).")
+    def publish_done(result) -> None:
+        published[str(local_deck_id)]["status"] = "published"
+        _write_config(config)
+        tooltip(f"Deck importado com {result['note_count']} nota(s).")
+
+    _run_network(
+        lambda: publish.publish_uploads(
+            client, remote_deck_id, payload, media_blobs
+        ),
+        publish_done,
+        publish_failed,
+    )
 
 
 def _save_subscriptions(
@@ -609,17 +621,48 @@ def sync_all(trigger: str) -> None:
             showWarning("Faça login no Revizza antes de sincronizar.")
         return
 
+    from aqt.operations import QueryOp
+
+    from ..main.constants import media_concurrency
+
+    def _fail(exc: Exception) -> None:
+        sync.mark_sync_finished()
+        report_exception(exc)
+        if isinstance(exc, auth.AuthError):
+            auth.sign_out(config)
+            _write_config(config)
+        showWarning(sync_failure_message(exc))
+
+    def _report_progress(done: int, total: int) -> None:
+        # T031: contagem visível da fase de staging, empurrada para a thread Qt.
+        if total:
+            mw.taskman.run_on_main(
+                lambda: mw.progress.update(
+                    label=f"Revizza: mídia {done}/{total}", value=done, max=total
+                )
+            )
+
+    def _should_cancel() -> bool:  # T032: botão Cancelar do diálogo de progresso
+        return mw.progress.want_cancel()
+
     sync.mark_sync_started()
     try:
         token, refreshed = auth.ensure_access_token(config)
         if refreshed:
             _write_config(config)
-        client = AnkiHubBrClient(
-            connection_settings(config)["api_base_url"],
-            token=token,
-            anki_version=compat.anki_version(),
-            sync_run_id=uuid4().hex,
-        )
+    except Exception as exc:  # falha de auth antes de qualquer trabalho de rede
+        _fail(exc)
+        return
+    client = AnkiHubBrClient(
+        connection_settings(config)["api_base_url"],
+        token=token,
+        anki_version=compat.anki_version(),
+        sync_run_id=uuid4().hex,
+    )
+
+    def phase_network(_col):
+        # Fase 1 (US4/T028): assinaturas + download/validação da mídia, sem
+        # travar a coleção — o Anki fica responsivo durante downloads pesados.
         deck_options = []
         for deck in client.get_subscribed_decks():
             prefs = deck.get("subscription", {})
@@ -630,15 +673,33 @@ def sync_all(trigger: str) -> None:
             deck_options.append(
                 (deck["id"], prefs.get("delete_notes_on_removal", False))
             )
-        synced = len(sync.sync_decks(mw.col, client, deck_options))
-    except Exception as exc:
-        report_exception(exc)
-        if isinstance(exc, auth.AuthError):
-            auth.sign_out(config)
-            _write_config(config)
-        showWarning(sync_failure_message(exc))
-        return
-    finally:
-        sync.mark_sync_finished()
-    if synced or trigger == "manual":
-        tooltip(f"Revizza: {synced} deck(s) sincronizado(s).")
+        return sync.prepare_run(
+            mw.col,
+            client,
+            deck_options,
+            concurrency=media_concurrency(config),
+            should_cancel=_should_cancel,
+            on_progress=_report_progress,
+        )
+
+    def phase_apply(prepared):
+        # Fase 2 (US4/T028): escreve notas + commit da mídia sob backup.
+        def op(_col):
+            return len(sync.commit_run(mw.col, client, prepared))
+
+        def done(synced):
+            sync.mark_sync_finished()
+            if synced or trigger == "manual":
+                tooltip(f"Revizza: {synced} deck(s) sincronizado(s).")
+
+        QueryOp(parent=mw, op=op, success=done).failure(
+            _fail
+        ).with_progress("Revizza: aplicando alterações…").run_in_background()
+
+    (
+        QueryOp(parent=mw, op=phase_network, success=phase_apply)
+        .failure(_fail)
+        .without_collection()
+        .with_progress("Revizza: sincronizando mídia…")
+        .run_in_background()
+    )

@@ -108,9 +108,10 @@ def _deck_payload(deck: Deck, notes) -> dict:
         "subdecks": sorted(
             {n["anki_deck_path"] for n in note_items if n["anki_deck_path"]}
         ),
+        # só mídia confirmada entra no manifesto (FR-005, contracts/media-sync.md §1)
         "media": [
             {"filename": m.original_filename, "content_hash": m.content_hash}
-            for m in deck.media_files.all()
+            for m in deck.media_files.filter(status="ready")
         ],
     }
 
@@ -246,12 +247,66 @@ class MediaDownloadView(APIView):
             return Response(
                 {"detail": "Mídia não encontrada."}, status=status.HTTP_404_NOT_FOUND
             )
+        if media_file.status != "ready":
+            # mesmo 404 de "hash desconhecido": o cliente não distingue "nunca vai
+            # existir" de "ainda não pronto" (contracts/media-sync.md §2)
+            return Response(
+                {"detail": "Mídia ainda não disponível."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response(
             {
                 "url": media.signed_download_url(media_file.storage_path),
                 "filename": media_file.original_filename,
             }
         )
+
+
+class MediaUploadConfirmView(APIView):
+    """POST /decks/{id}/media/{hash}/confirm/ — marca um upload como concluído.
+
+    Chamado pelo add-on logo após cada upload_signed_media bem-sucedido; vira o
+    status pending_upload → ready. Idempotente (FR-004). contracts/media-sync.md §4.
+    """
+
+    @method_decorator(
+        ratelimit(
+            group="media-confirm",
+            key="user",
+            rate=_publish_rate,  # mesma família de operação do publish (§4)
+            method="POST",
+            block=False,
+        )
+    )
+    def post(self, request, deck_id, content_hash):
+        limited = _rate_limit_response(request, retry_after="3600")
+        if limited:
+            return limited
+        deck = get_object_or_404(Deck, pk=deck_id)
+        if not DeckModerator.objects.filter(
+            deck=deck, user=request.user, status=DeckModerator.Status.ACTIVE
+        ).exists():
+            return Response(
+                {
+                    "detail": (
+                        "Apenas o criador ou moderadores do deck podem confirmar "
+                        "uploads."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        media_file = MediaFile.objects.filter(
+            deck=deck, content_hash=content_hash
+        ).first()
+        if media_file is None:
+            return Response(
+                {"detail": "Mídia não encontrada para este deck."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if media_file.status != "ready":  # idempotente: já-ready é no-op 200
+            media_file.status = "ready"
+            media_file.save(update_fields=["status"])
+        return Response({"content_hash": content_hash, "status": "ready"})
 
 
 class PublishView(APIView):
@@ -347,6 +402,8 @@ class PublishView(APIView):
                     defaults={
                         "original_filename": item["filename"],
                         "storage_path": f"{deck.id}/{item['content_hash']}",
+                        # só vira "ready" após o confirm pós-upload (§3/§4)
+                        "status": "pending_upload",
                     },
                 )
                 if created:  # hash inédito → precisa de upload
