@@ -144,9 +144,11 @@ def _write_config(config: dict) -> None:
 
 
 def _state_db_path() -> Path:
-    user_files = Path(__file__).resolve().parent.parent / "user_files"
-    user_files.mkdir(exist_ok=True)
-    return user_files / "sync_state.sqlite3"
+    # Por perfil: o `since_mod` de um perfil não pode vazar para outro — um cache
+    # global faz o primeiro sync de um perfil novo voltar delta vazio (sem cartões).
+    from aqt import mw
+
+    return Path(mw.pm.profileFolder()) / "ankihub_br_sync_state.sqlite3"
 
 
 def _on_profile_open() -> None:
