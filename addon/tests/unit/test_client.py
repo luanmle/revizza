@@ -84,7 +84,7 @@ def test_signed_media_upload_does_not_send_api_authorization(monkeypatch):
         (
             "https://storage.example/upload?token=signed",
             {
-                "files": {"file": ("a.png", b"png", "application/octet-stream")},
+                "files": {"file": ("a.png", b"png", "image/png")},
                 "timeout": 30,
             },
         )

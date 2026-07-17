@@ -146,7 +146,7 @@ export function buildCardDoc(
     { ...fields, FrontSide: front },
     { side: "answer", clozeOrdinal },
   );
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body class="card">${back}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>img{max-width:100%;height:auto}</style><style>${css}</style></head><body class="card">${back}</body></html>`;
 }
 
 export default function NotePreview({
@@ -184,7 +184,7 @@ export default function NotePreview({
                   ordinal,
                 )}
                 title={`Preview do card ${label}`}
-                className="h-64 w-full rounded-lg border bg-white"
+                className="h-96 w-full rounded-lg border bg-white"
               />
             </div>
           );

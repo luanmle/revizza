@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "AnkiHub Brasil" [ref=e4] [cursor=pointer]:
+        - /url: /decks
+      - navigation [ref=e5]:
+        - link "Catálogo" [ref=e6] [cursor=pointer]:
+          - /url: /decks
+        - button "Alternar tema" [ref=e7]
+  - main [ref=e8]:
+    - navigation "Trilha de navegação" [ref=e9]:
+      - link "Catálogo" [ref=e10] [cursor=pointer]:
+        - /url: /decks
+      - text: /
+      - link "Deck" [ref=e11] [cursor=pointer]:
+        - /url: /decks/0bf52c77-fb4f-4153-a6f1-23bda775a4a3
+      - text: / Nota
+    - heading "Nota" [level=1] [ref=e12]

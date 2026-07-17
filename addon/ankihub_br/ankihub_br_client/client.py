@@ -4,6 +4,8 @@ Auth via Bearer token do Supabase, retry/backoff automático em 429/5xx (respeit
 Retry-After — FR-032) e versionamento de contrato via header Accept.
 """
 
+import mimetypes
+import os
 from urllib.parse import urlsplit
 
 import requests
@@ -175,9 +177,19 @@ class AnkiHubBrClient:
 
     def upload_signed_media(self, url: str, filename: str, content: bytes) -> None:
         # Supabase signed upload: multipart PUT; não vaza o Bearer da API.
+        # MIME real do arquivo: o Storage serve com nosniff, então octet-stream
+        # faz o navegador recusar renderizar <img> na plataforma web.
+        content_type = (
+            mimetypes.guess_type(filename)[0]
+            # ausentes do mimetypes em Pythons antigos embarcados no Anki
+            or {".avif": "image/avif", ".webp": "image/webp"}.get(
+                os.path.splitext(filename)[1].lower()
+            )
+            or "application/octet-stream"
+        )
         response = requests.put(
             url,
-            files={"file": (filename, content, "application/octet-stream")},
+            files={"file": (filename, content, content_type)},
             timeout=DEFAULT_TIMEOUT,
         )
         response.raise_for_status()
