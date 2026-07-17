@@ -14,7 +14,7 @@ import requests
 from ..ankihub_br_client import AnkiHubBrClient
 from ..db.models import deck_id_for_guid, field_content_hash, field_hash_for_guid
 from ..errors import report_exception
-from ..main import compat
+from ..main import compat, publish
 from ..main.constants import connection_settings
 
 _BUTTON_ID = "revizza-suggest-btn"
@@ -60,14 +60,31 @@ def submit_change(
     tags: list[str],
     category: str,
     justification: str,
+    media_blobs: dict[str, tuple[str, bytes]] | None = None,
 ) -> str:
-    """Resolve o GUID e submete a sugestão. Retorna a mensagem ao usuário.
+    """Resolve o GUID, sobe mídia nova e submete a sugestão. Retorna a mensagem.
+
+    Mídia sobe ANTES da sugestão: uma sugestão aceita nunca pode referenciar
+    arquivo inexistente no servidor. Falha em qualquer upload aborta o envio
+    (usuário reenvia; rascunho preservado).
 
     Nunca levanta por erro HTTP — o rascunho do editor é sempre preservado porque
     este fluxo jamais toca os campos abertos.
     """
     try:
         resolved = client.resolve_note(guid)
+        if media_blobs:
+            upload_urls = client.request_media_uploads(
+                resolved["deck_id"],
+                [
+                    {"filename": filename, "content_hash": content_hash}
+                    for content_hash, (filename, _content) in media_blobs.items()
+                ],
+            )
+            for content_hash, url in upload_urls.items():
+                filename, content = media_blobs[content_hash]
+                client.upload_signed_media(url, filename, content)
+                client.confirm_media_upload(resolved["deck_id"], content_hash)
         client.submit_change_suggestion(
             resolved["note_id"], fields, tags, category, justification
         )
@@ -180,10 +197,16 @@ def _on_click(editor) -> None:
     if result is None:
         return
     category, justification = result
-    _submit_off_thread(editor, note.guid, current_fields, category, justification)
+    # leitura da coleção/disco na thread Qt; o upload vai para background
+    media_blobs = publish.collect_media_blobs(note.col, note.mid, current_fields)
+    _submit_off_thread(
+        editor, note.guid, current_fields, category, justification, media_blobs
+    )
 
 
-def _submit_off_thread(editor, guid, fields, category, justification) -> None:
+def _submit_off_thread(
+    editor, guid, fields, category, justification, media_blobs=None
+) -> None:
     from aqt import mw
     from aqt.operations import QueryOp
     from aqt.utils import showWarning, tooltip
@@ -200,7 +223,9 @@ def _submit_off_thread(editor, guid, fields, category, justification) -> None:
             token=token,
             anki_version=compat.anki_version(),
         )
-        message = submit_change(client, guid, fields, [], category, justification)
+        message = submit_change(
+            client, guid, fields, [], category, justification, media_blobs
+        )
         return (updated if refreshed else None, message)
 
     def done(result):

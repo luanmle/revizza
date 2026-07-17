@@ -33,12 +33,28 @@ def test_change_assumed_without_baseline():
 
 
 class _FakeClient:
-    def __init__(self, submit_exc=None):
+    def __init__(self, submit_exc=None, upload_exc=None):
         self.submit_exc = submit_exc
+        self.upload_exc = upload_exc
         self.submitted = []
+        self.requested_media = []
+        self.uploaded = []
+        self.confirmed = []
 
     def resolve_note(self, guid):
-        return {"note_id": "note-1"}
+        return {"note_id": "note-1", "deck_id": "deck-1"}
+
+    def request_media_uploads(self, deck_id, media_items):
+        self.requested_media.append((deck_id, media_items))
+        return {item["content_hash"]: f"https://up/{item['content_hash']}" for item in media_items}
+
+    def upload_signed_media(self, url, filename, content):
+        if self.upload_exc:
+            raise self.upload_exc
+        self.uploaded.append((url, filename, content))
+
+    def confirm_media_upload(self, deck_id, content_hash):
+        self.confirmed.append((deck_id, content_hash))
 
     def submit_change_suggestion(self, note_id, fields, tags, category, justification):
         self.submitted.append((note_id, fields, tags, category, justification))
@@ -77,3 +93,31 @@ def test_submit_network_error():
 
 def test_submit_other_http_error():
     assert _submit(_FakeClient(submit_exc=_http_error(500))) == editor.MSG_ERROR
+
+
+# --- mídia referenciada sobe ANTES da sugestão ---
+
+_BLOBS = {"a" * 64: ("img.png", b"png-bytes")}
+
+
+def test_submit_uploads_media_before_suggestion():
+    client = _FakeClient()
+    message = editor.submit_change(
+        client, "guid-1", {"Verso": '<img src="img.png">'}, [], "outro", "pq", _BLOBS
+    )
+    assert message == editor.MSG_OK
+    assert client.requested_media == [
+        ("deck-1", [{"filename": "img.png", "content_hash": "a" * 64}])
+    ]
+    assert client.uploaded[0][1] == "img.png"
+    assert client.confirmed == [("deck-1", "a" * 64)]
+    assert client.submitted  # sugestão enviada depois da mídia
+
+
+def test_submit_media_upload_failure_aborts_suggestion():
+    client = _FakeClient(upload_exc=_http_error(500))
+    message = editor.submit_change(
+        client, "guid-1", {"Verso": '<img src="img.png">'}, [], "outro", "pq", _BLOBS
+    )
+    assert message == editor.MSG_ERROR
+    assert client.submitted == []  # nada de sugestão órfã de mídia

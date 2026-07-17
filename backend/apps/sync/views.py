@@ -1,5 +1,6 @@
 """API de sincronização consumida exclusivamente pelo add-on (contracts/sync.md)."""
 
+import re
 from datetime import UTC
 
 from django.conf import settings
@@ -262,6 +263,62 @@ class MediaDownloadView(APIView):
         )
 
 
+_SHA256 = re.compile(r"[0-9a-f]{64}")
+
+
+class MediaUploadRequestView(APIView):
+    """POST /decks/{id}/media/ — slots de upload para mídia de sugestões (US2).
+
+    Sem isto, uma sugestão com <img> novo referencia mídia que não existe no
+    servidor: a nota oficial quebra na web e no sync de todos os assinantes.
+    Mesmo contrato do publish: {"media": [{filename, content_hash}]} →
+    {"media_upload_urls": {hash: url_assinada}} só para o que falta subir.
+    """
+
+    @method_decorator(
+        ratelimit(
+            group="media-confirm",  # mesma família/quota dos confirms (§4)
+            key="user",
+            rate=_publish_rate,
+            method="POST",
+            block=False,
+        )
+    )
+    def post(self, request, deck_id):
+        limited = _rate_limit_response(request, retry_after="3600")
+        if limited:
+            return limited
+        deck = get_object_or_404(Deck, pk=deck_id)
+        if not Subscription.objects.filter(user=request.user, deck=deck).exists():
+            return Response(
+                {"detail": "Assine o deck para enviar mídia."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        upload_urls = {}
+        for item in request.data.get("media", []):
+            content_hash = str(item.get("content_hash", ""))
+            filename = str(item.get("filename", ""))
+            if not _SHA256.fullmatch(content_hash) or not filename:
+                raise ValidationError(
+                    {"detail": "media exige filename e content_hash sha256."}
+                )
+            media_file, _created = MediaFile.objects.get_or_create(
+                deck=deck,
+                content_hash=content_hash,
+                defaults={
+                    "original_filename": filename[:255],
+                    "storage_path": f"{deck.id}/{content_hash}",
+                    "status": "pending_upload",
+                },
+            )
+            # pending_upload cobre também retomada de um upload interrompido
+            if media_file.status == "pending_upload":
+                upload_urls[content_hash] = media.signed_upload_url(
+                    media_file.storage_path
+                )
+        return Response({"media_upload_urls": upload_urls})
+
+
 class MediaUploadConfirmView(APIView):
     """POST /decks/{id}/media/{hash}/confirm/ — marca um upload como concluído.
 
@@ -283,13 +340,15 @@ class MediaUploadConfirmView(APIView):
         if limited:
             return limited
         deck = get_object_or_404(Deck, pk=deck_id)
-        if not DeckModerator.objects.filter(
+        # moderador (publish) OU assinante (mídia de sugestão via MediaUploadRequestView)
+        allowed = DeckModerator.objects.filter(
             deck=deck, user=request.user, status=DeckModerator.Status.ACTIVE
-        ).exists():
+        ).exists() or Subscription.objects.filter(user=request.user, deck=deck).exists()
+        if not allowed:
             return Response(
                 {
                     "detail": (
-                        "Apenas o criador ou moderadores do deck podem confirmar "
+                        "Apenas moderadores ou assinantes do deck podem confirmar "
                         "uploads."
                     )
                 },

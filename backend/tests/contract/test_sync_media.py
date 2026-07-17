@@ -233,3 +233,101 @@ def test_publish_issues_upload_urls_then_confirm_exposes_media(
             f"/api/v1/decks/{deck_id}/sync/{path}/", HTTP_X_SYNC_RUN_ID="r1"
         ).json()
         assert {m["content_hash"] for m in body["media"]} == {hash_a}
+
+
+# --- POST /decks/{id}/media/ — slots de upload para mídia de sugestões (US2) ---
+
+NEW_HASH = "c" * 64
+
+
+@pytest.fixture
+def suggestion_media_deck(make_deck):
+    return make_deck()
+
+
+def _request_media(client, deck, items):
+    return client.post(
+        f"/api/v1/decks/{deck.id}/media/", {"media": items}, format="json"
+    )
+
+
+def test_media_request_requires_subscription(auth_client, suggestion_media_deck):
+    response = _request_media(
+        auth_client,
+        suggestion_media_deck,
+        [{"filename": "nova.png", "content_hash": NEW_HASH}],
+    )
+    assert response.status_code == 403
+
+
+def test_media_request_returns_upload_url_for_new_hash(
+    auth_client, user, suggestion_media_deck, monkeypatch
+):
+    Subscription.objects.create(user=user, deck=suggestion_media_deck)
+    monkeypatch.setattr(
+        "apps.sync.views.media.signed_upload_url",
+        lambda path: f"https://storage.example/{path}?upload",
+    )
+
+    response = _request_media(
+        auth_client,
+        suggestion_media_deck,
+        [{"filename": "nova.png", "content_hash": NEW_HASH}],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["media_upload_urls"][NEW_HASH].endswith("?upload")
+    row = MediaFile.objects.get(deck=suggestion_media_deck, content_hash=NEW_HASH)
+    assert row.status == "pending_upload"
+    assert row.original_filename == "nova.png"
+
+
+def test_media_request_skips_ready_hash(auth_client, user, suggestion_media_deck):
+    Subscription.objects.create(user=user, deck=suggestion_media_deck)
+    MediaFile.objects.create(
+        deck=suggestion_media_deck,
+        content_hash=NEW_HASH,
+        storage_path=f"{suggestion_media_deck.id}/{NEW_HASH}",
+        original_filename="ja-existe.png",
+        status="ready",
+    )
+
+    response = _request_media(
+        auth_client,
+        suggestion_media_deck,
+        [{"filename": "ja-existe.png", "content_hash": NEW_HASH}],
+    )
+
+    assert response.status_code == 200
+    assert response.json()["media_upload_urls"] == {}
+
+
+def test_media_request_rejects_bad_hash(auth_client, user, suggestion_media_deck):
+    Subscription.objects.create(user=user, deck=suggestion_media_deck)
+    response = _request_media(
+        auth_client,
+        suggestion_media_deck,
+        [{"filename": "x.png", "content_hash": "../../etc/passwd"}],
+    )
+    assert response.status_code == 400
+
+
+def test_subscriber_can_confirm_suggestion_media(
+    auth_client, user, suggestion_media_deck
+):
+    Subscription.objects.create(user=user, deck=suggestion_media_deck)
+    MediaFile.objects.create(
+        deck=suggestion_media_deck,
+        content_hash=NEW_HASH,
+        storage_path=f"{suggestion_media_deck.id}/{NEW_HASH}",
+        original_filename="nova.png",
+        status="pending_upload",
+    )
+
+    response = auth_client.post(
+        f"/api/v1/decks/{suggestion_media_deck.id}/media/{NEW_HASH}/confirm/"
+    )
+
+    assert response.status_code == 200
+    row = MediaFile.objects.get(deck=suggestion_media_deck, content_hash=NEW_HASH)
+    assert row.status == "ready"

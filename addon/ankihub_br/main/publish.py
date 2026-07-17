@@ -34,6 +34,27 @@ def _note_type_payload(notetype: dict) -> dict:
     }
 
 
+def collect_media_blobs(
+    col, mid: int, field_values: dict, media_dir: Path | None = None
+) -> dict[str, tuple[str, bytes]]:
+    """Mídia local referenciada nos campos: {sha256: (filename, bytes)}.
+
+    Usado no publish e no envio de sugestões (a mídia nova precisa subir junto,
+    senão a nota oficial referencia um arquivo que não existe no servidor).
+    """
+    if media_dir is None:
+        media_dir = Path(col.media.dir()).resolve()
+    blobs: dict[str, tuple[str, bytes]] = {}
+    for value in field_values.values():
+        for filename in col.media.files_in_str(mid, value):
+            media_path = (media_dir / filename).resolve()
+            if media_dir not in media_path.parents or not media_path.is_file():
+                continue
+            content = media_path.read_bytes()
+            blobs.setdefault(hashlib.sha256(content).hexdigest(), (filename, content))
+    return blobs
+
+
 def build_publish_payload(
     col, deck_id: int, subject_tags: list[str] | None = None
 ) -> tuple[dict, dict[str, tuple[str, bytes]]]:
@@ -67,14 +88,10 @@ def build_publish_payload(
                 "note_type_index": mid_index[note.mid],
             }
         )
-        for value in field_values.values():
-            for filename in col.media.files_in_str(note.mid, value):
-                media_path = (media_dir / filename).resolve()
-                if media_dir not in media_path.parents or not media_path.is_file():
-                    continue
-                content = media_path.read_bytes()
-                content_hash = hashlib.sha256(content).hexdigest()
-                media_blobs.setdefault(content_hash, (filename, content))
+        for content_hash, blob in collect_media_blobs(
+            col, note.mid, field_values, media_dir
+        ).items():
+            media_blobs.setdefault(content_hash, blob)
 
     payload = {
         "name": root_name,

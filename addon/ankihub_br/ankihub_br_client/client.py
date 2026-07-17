@@ -130,6 +130,14 @@ class AnkiHubBrClient:
             },
         ).json()
 
+    def request_media_uploads(
+        self, deck_id: str, media_items: list[dict]
+    ) -> dict[str, str]:
+        """Pede URLs assinadas para mídia de sugestão; só hashes ausentes voltam."""
+        return self.post(f"/decks/{deck_id}/media/", json={"media": media_items}).json()[
+            "media_upload_urls"
+        ]
+
     def get_media_url(self, content_hash: str) -> str:
         return self.get(f"/media/{content_hash}/").json()["url"]
 

@@ -6,6 +6,7 @@ urlpatterns = [
     path("decks/<uuid:deck_id>/publish/", views.PublishView.as_view()),
     path("decks/<uuid:deck_id>/sync/delta/", views.DeltaView.as_view()),
     path("decks/<uuid:deck_id>/sync/full/", views.FullView.as_view()),
+    path("decks/<uuid:deck_id>/media/", views.MediaUploadRequestView.as_view()),
     path(
         "decks/<uuid:deck_id>/media/<str:content_hash>/confirm/",
         views.MediaUploadConfirmView.as_view(),
